@@ -5,7 +5,7 @@ Updated to match judge's requirements with new response schema.
 """
 
 from pydantic import BaseModel
-from typing import List, Optional, Dict, Literal
+from typing import List, Optional, Dict, Literal, Union
 
 # ============================================
 # INPUT MODELS (What judges send to us)
@@ -24,7 +24,7 @@ class Message(BaseModel):
     """
     sender: str          # "scammer" or "user"
     text: str            # The actual message content
-    timestamp: str       # ISO format: "2026-01-31T10:00:00Z"
+    timestamp: Union[str, int]       # ISO format (str) or Unix timestamp (int)
 
 
 class Metadata(BaseModel):
