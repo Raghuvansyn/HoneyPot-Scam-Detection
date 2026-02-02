@@ -1,0 +1,22 @@
+# Web Framework
+fastapi==0.109.0
+uvicorn[standard]==0.27.0
+python-dotenv==1.0.0
+
+# Pydantic (compatible version)
+pydantic==2.9.2
+
+# LangChain & LLM (Updated versions for compatibility)
+langchain-groq==0.1.9
+langchain-core==0.2.38
+
+# LangGraph
+langgraph==0.2.16
+
+
+
+# ML Model (Detection Agent)
+scikit-learn>=1.3.0
+
+# Utilities
+requests==2.31.0

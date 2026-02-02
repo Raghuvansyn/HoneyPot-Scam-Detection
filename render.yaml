@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: scambait-ai
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: GROQ_API_KEY
+        sync: false
+      - key: HACKATHON_API_KEY
+        sync: false
+      - key: GUVI_CALLBACK_URL
+        value: https://hackathon.guvi.in/api/updateHoneyPotFinalResult
+      - key: LLM_MODEL
+        value: llama-3.1-8b-instant

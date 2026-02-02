@@ -1,0 +1,14 @@
+{
+    "sessionId": "test-session-002",
+    "message": {
+        "sender": "user",
+        "text": "Hello, how are you doing today?",
+        "timestamp": "2026-01-28T10:15:30Z"
+    },
+    "conversationHistory": [],
+    "metadata": {
+        "channel": "SMS",
+        "language": "English",
+        "locale": "IN"
+    }
+}

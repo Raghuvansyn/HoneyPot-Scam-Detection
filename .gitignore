@@ -1,0 +1,33 @@
+# Environment variables (SECRETS!)
+.env
+
+# Database files
+*.db
+*.db-journal
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+.Python
+
+# Virtual environment
+venv/
+env/
+one/  # <- Accidentally created venv inside project
+
+# Temporary/build files
+template.py  # <- Scaffolding script (no longer needed)
+sanity_check.py  # <- Old test file (no longer needed)
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+*.log
