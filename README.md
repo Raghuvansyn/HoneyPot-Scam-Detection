@@ -373,9 +373,9 @@ scambait-ai-honeypot/
 
 ## 👥 Team
 
-**Project Lead:** [Your Name]
-**Email:** [Your Email]
-**GitHub:** [Your GitHub]
+**Project Lead:** Diya Virmani
+**Email:** diyavirmani41@gmail.com
+**GitHub:** https://github.com/diyaavirmani
 
 **Built for:** GUVI Hackathon 2026
 
