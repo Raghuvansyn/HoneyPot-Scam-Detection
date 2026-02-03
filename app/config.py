@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+CEREBRAS_API_KEY = os.getenv("CEREBRAS_API_KEY")
 
 API_KEY = os.getenv("API_KEY", "temp-key")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "temp-key")
@@ -13,9 +14,14 @@ GROQ_API_KEY = os.getenv("GROQ_API_KEY", "temp-key")
 
 DATABASE_PATH = os.getenv("DATABASE_PATH", "honeypot.db")
 
+#Primary LLM
+LLM_PROVIDER = "cerebras"  # Primary
+LLM_MODEL = "llama3.1-8b"
 
+# Fallback
+FALLBACK_PROVIDER = "groq"
+FALLBACK_MODEL = "llama-3.1-8b-instant"
 
-LLM_MODEL = os.getenv("LLM_MODEL", "llama-3.3-70b-versatile")
 
 MODE=os.getenv("MODE", "dev")
 if MODE == "dev":

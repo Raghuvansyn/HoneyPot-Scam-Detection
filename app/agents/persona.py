@@ -4,11 +4,44 @@ Context-Aware Persona Agent
 Actively references extraction ONLY when we need more intelligence.
 Stops when we have enough evidence.
 """
-
+from langchain_cerebras import ChatCerebras
+from langchain_cerebras import ChatCerebras
 from langchain_groq import ChatGroq
 from langchain_core.messages import SystemMessage, HumanMessage
-from app.config import GROQ_API_KEY, LLM_MODEL
+from app.config import (
+    CEREBRAS_API_KEY, 
+    GROQ_API_KEY,
+    LLM_PROVIDER,
+    LLM_MODEL,
+    FALLBACK_PROVIDER,
+    FALLBACK_MODEL
+)
 from app.utils import logger
+
+def get_llm():
+    """Get LLM with fallback logic"""
+    
+    if LLM_PROVIDER == "cerebras" and CEREBRAS_API_KEY:
+        try:
+            logger.info("🚀 Using Cerebras (Primary)")
+            return ChatCerebras(
+                model=LLM_MODEL,
+                api_key=CEREBRAS_API_KEY,
+                temperature=0.8,
+                max_tokens=200
+            )
+        except Exception as e:
+            logger.warning(f"⚠️  Cerebras failed: {e}")
+            logger.info("🔄 Falling back to Groq...")
+    
+    # Fallback to Groq
+    logger.info("🔄 Using Groq (Fallback)")
+    return ChatGroq(
+        model=FALLBACK_MODEL,
+        api_key=GROQ_API_KEY,
+        temperature=0.8,
+        max_tokens=200
+    )
 
 def generate_persona_response(
     conversation_history: list,
@@ -32,17 +65,9 @@ def generate_persona_response(
         Persona's response text
     """
     
-    if not GROQ_API_KEY:
-        logger.warning("GROQ_API_KEY not set, using fallback")
-        return "I'm sorry, I don't understand. Can you explain more clearly?"
     
     try:
-        llm = ChatGroq(
-            api_key=GROQ_API_KEY,
-            model=LLM_MODEL,
-            temperature=0.8,
-            max_tokens=150
-        )
+        llm = get_llm()
         
         # Build conversation text
         conversation_text = "\n".join([
