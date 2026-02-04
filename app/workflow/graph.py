@@ -53,8 +53,16 @@ def load_session_node(state: AgentState) -> AgentState:
     if existing_state:
         logger.info(f"OK: Found existing session (messages: {existing_state['totalMessages']})")
         session_logger.info(f"Loaded existing session with {existing_state['totalMessages']} messages")
-        # Merge existing state with new message
+        
+        # KEY FIX: Preserve the new message (it was in state["conversationHistory"][0])
+        new_message = state["conversationHistory"][0]
+        
+        # Merge existing state (this overwrites conversationHistory with OLD history)
         state.update(existing_state)
+        
+        # Append the new message to the END of the history
+        state["conversationHistory"].append(new_message)
+        state["totalMessages"] += 1
     else:
         logger.info(f"NEW: Creating new session")
         session_logger.info("Created new session")
