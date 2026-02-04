@@ -20,10 +20,10 @@ GUVI_CALLBACK_URL = "https://webhook.site/31fb25d8-d2ac-47b4-ae81-6d4b8b3eefe5"
 
 HARD_MAX_MESSAGES = 20      # Absolute limit - never go beyond
 EARLY_END_MESSAGES = 5      # Never end before this
-GOOD_INTEL_CATEGORIES = 3   # 3+ categories = strong evidence → end
-DECENT_INTEL_MESSAGES = 10  # 2 categories needs this many messages before ending
-WEAK_INTEL_MESSAGES = 15    # 1 category needs this many messages before ending
-NO_INTEL_MESSAGES = 12      # 0 categories → give up after this
+GOOD_INTEL_CATEGORIES = 3   # 3+ categories = Jackpot (End immediately)
+DECENT_INTEL_MESSAGES = 6   # 2 categories (e.g. Phone+Link) -> End after 6 messages (Efficiency)
+WEAK_INTEL_MESSAGES = 12    # 1 category -> Keep engaging until 12 messages (Digging)
+NO_INTEL_MESSAGES = 12      # 0 categories -> Give up after 12
 
 
 def count_intel_categories(extracted_intelligence: dict) -> dict:
