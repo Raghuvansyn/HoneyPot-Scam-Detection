@@ -215,9 +215,9 @@ def ml_classify(text: str) -> dict:
 
 def detect_scam(text: str) -> tuple[bool, float]:
     """
-    Cascading detection pipeline:
-        1. Rules  → if score >= 0.7 → SCAM
-        2. ML     → if confident    → trust ML result
+    Cascading detection pipeline with stricter thresholds:
+        1. Rules  → if score >= 0.15 → SCAM (at least 4-5 keywords)
+        2. ML     → if confident >= 0.7 → trust ML result
         3. Else   → NOT SCAM
 
     Args:
@@ -230,7 +230,8 @@ def detect_scam(text: str) -> tuple[bool, float]:
     # ── Step 1: Rules ──
     rule_result = rule_based_score(text)
 
-    if rule_result["rule_score"] >= 0.7:
+    # Need at least 15% keyword match (4-5 keywords) to be confident
+    if rule_result["rule_score"] >= 0.15:
         logger.info(f"🔍 Detection: SCAM detected by RULES (score={rule_result['rule_score']})")
         logger.info(f"   Matched keywords: {rule_result['matched_keywords']}")
         return True, 0.95
@@ -242,10 +243,10 @@ def detect_scam(text: str) -> tuple[bool, float]:
     logger.info(f"   ML result: is_scam={ml_result['is_scam']}, confidence={ml_result['confidence']}")
     logger.info(f"   Matched keywords: {rule_result['matched_keywords']}")
 
-    if ml_result["confidence"] >= 0.5:
-        # ML is confident enough → trust it
-        return ml_result["is_scam"], ml_result["confidence"]
+    # ML must be VERY confident (70%+) to override low rule score
+    if ml_result["is_scam"] and ml_result["confidence"] >= 0.7:
+        return True, ml_result["confidence"]
 
     # ── Step 3: Fallback — nothing triggered ──
-    logger.info(f"🔍 Detection: NOT SCAM (rules + ML both inconclusive)")
+    logger.info(f"🔍 Detection: NOT SCAM (insufficient evidence)")
     return False, 0.15

@@ -14,15 +14,15 @@ from app.utils.logger import logger
 GUVI_CALLBACK_URL = "https://hackathon.guvi.in/api/updateHoneyPotFinalResult"
 
 # ============================================
-# DYNAMIC THRESHOLDS
+# DYNAMIC THRESHOLDS (EXTENDED FOR LONGER CONVERSATIONS)
 # ============================================
 
-HARD_MAX_MESSAGES = 18      # Absolute limit - never go beyond
+HARD_MAX_MESSAGES = 20      # Absolute limit - never go beyond
 EARLY_END_MESSAGES = 5      # Never end before this
 GOOD_INTEL_CATEGORIES = 3   # 3+ categories = strong evidence → end
-DECENT_INTEL_MESSAGES = 8   # 2 categories needs this many messages before ending
-WEAK_INTEL_MESSAGES = 12    # 1 category needs this many messages before ending
-NO_INTEL_MESSAGES = 8       # 0 categories → give up after this
+DECENT_INTEL_MESSAGES = 10  # 2 categories needs this many messages before ending
+WEAK_INTEL_MESSAGES = 15    # 1 category needs this many messages before ending
+NO_INTEL_MESSAGES = 12      # 0 categories → give up after this
 
 
 def count_intel_categories(extracted_intelligence: dict) -> dict:

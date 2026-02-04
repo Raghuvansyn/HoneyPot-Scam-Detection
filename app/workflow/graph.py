@@ -629,14 +629,33 @@ async def run_honeypot_workflow(request: HoneypotRequest) -> JudgeResponse:
         # Persona type
         persona = "confused_customer" if final_state["scamDetected"] else "polite_responder"
         
-        # Build response metadata
+        # ============================================
+        # SANITIZE agentNotes - NO INTELLIGENCE LEAK
+        # ============================================
+        # Only show detection result, NOT intelligence details
+        # Full intelligence goes ONLY to GUVI callback
+        
+        if final_state["scamDetected"]:
+            # Extract ONLY detection confidence
+            detection_line = "Detection: SCAM"
+            if "confidence:" in final_state.get("agentNotes", ""):
+                try:
+                    conf_str = final_state["agentNotes"].split("confidence:")[1].split(")")[0].strip()
+                    detection_line = f"Detection: SCAM (confidence: {conf_str})"
+                except:
+                    pass
+            sanitized_notes = detection_line
+        else:
+            sanitized_notes = "Detection: LEGITIMATE"
+        
+        # Build response metadata (with sanitized notes)
         response_meta = ResponseMeta(
             agentState="completed" if is_complete else "engaging",
             sessionStatus="closed" if is_complete else "active",
             persona=persona,
             turn=final_state["totalMessages"],
             confidence=confidence,
-            agentNotes=final_state["agentNotes"]
+            agentNotes=sanitized_notes  # <-- SANITIZED
         )
         
         # Build judge response
