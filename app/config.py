@@ -23,7 +23,7 @@ FALLBACK_PROVIDER = "groq"
 FALLBACK_MODEL = "llama-3.1-8b-instant"
 
 
-MODE=os.getenv("MODE", "prod")
+MODE = "prod" # FORCE ENABLE CALLBACKS
 if MODE == "dev":
     print("Running in DEV mode - callbacks disabled")
 else:
