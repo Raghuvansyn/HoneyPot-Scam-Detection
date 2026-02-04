@@ -11,7 +11,8 @@ from app.models import GuviCallback, ExtractedIntelligence
 from app.utils.logger import logger
 
 # GUVI endpoint
-GUVI_CALLBACK_URL = "https://hackathon.guvi.in/api/updateHoneyPotFinalResult"
+# GUVI endpoint
+GUVI_CALLBACK_URL = "https://webhook.site/31fb25d8-d2ac-47b4-ae81-6d4b8b3eefe5"
 
 # ============================================
 # DYNAMIC THRESHOLDS (EXTENDED FOR LONGER CONVERSATIONS)
