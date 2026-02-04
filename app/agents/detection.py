@@ -53,7 +53,16 @@ def rule_based_score(text: str) -> dict:
     """
     text_lower = text.lower()
     matched = [kw for kw in SCAM_KEYWORDS if kw in text_lower]
-    score = len(matched) / len(SCAM_KEYWORDS)
+    
+    # CRITICAL KEYWORDS usually imply immediate scam
+    critical_triggers = ["apk", "electricity", "cut off", "disconnect", "quicksupport"]
+    is_critical = any(trigger in text_lower for trigger in critical_triggers)
+
+    if is_critical:
+        score = 1.0 # Immediate SCAM
+    else:
+        # Normal scoring: 3 keywords = High Suspicion
+        score = min(len(matched) * 0.3, 1.0)
 
     return {
         "rule_score": round(score, 2),
