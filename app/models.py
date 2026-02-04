@@ -38,9 +38,9 @@ class Metadata(BaseModel):
         "locale": "IN"
     }
     """
-    channel: str         # "SMS", "WhatsApp", "Email"
-    language: str        # "English", "Hindi", etc.
-    locale: str          # "IN", "US", etc.
+    channel: Optional[str] = "unknown" # "SMS", "WhatsApp", "Email"
+    language: Optional[str] = "en"     # "English", "Hindi", etc.
+    locale: Optional[str] = "IN"       # "IN", "US", etc. (Made Optional for robustness)
 
 
 class HoneypotRequest(BaseModel):
