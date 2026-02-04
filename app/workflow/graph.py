@@ -216,14 +216,13 @@ def extraction_node(state: AgentState) -> AgentState:
             log_intelligence(session_id, intelligence)
             session_logger.info(f"Final extracted intelligence: {intelligence}")
             
-            # Count extracted items
+            # Count extracted items (for logging ONLY - don't add to agentNotes)
             extracted_count = sum(
                 len(v) for v in intelligence.values()
                 if isinstance(v, list)
             )
             
             if extracted_count > 0:
-                state["agentNotes"] += f" | Extracted {extracted_count} items"
                 logger.info(f"[STATS] Total intelligence items: {extracted_count}")
             else:
                 logger.info(f"[STATS] No intelligence extracted yet")
@@ -287,8 +286,14 @@ def save_session_node(state: AgentState) -> AgentState:
     # GENERATE SUMMARY
     # ============================================
     
+    # ============================================
+    # GENERATE SUMMARY (FOR CALLBACK ONLY)
+    # ============================================
+    
+    # Store complete summary with intelligence for CALLBACK
+    # This will be sent to GUVI endpoint ONLY, not to user
     if state["scamDetected"] and state["totalMessages"] >= 3:
-        logger.info("📊 Generating conversation summary...")
+        logger.info("📊 Generating conversation summary for callback...")
         
         # Extract detection confidence from agentNotes
         detection_confidence = 0.5  # default
@@ -307,14 +312,16 @@ def save_session_node(state: AgentState) -> AgentState:
                 scam_detected=state["scamDetected"]
             )
             
-            state["agentNotes"] = complete_summary
+            # Store in a SEPARATE field for callback only
+            state["fullSummaryForCallback"] = complete_summary
             
-            logger.info(f"✅ Summary generated")
-            session_logger.info(f"Summary: {complete_summary}")
+            logger.info(f"✅ Summary generated for callback")
+            session_logger.info(f"Callback summary: {complete_summary}")
             
         except Exception as e:
             logger.warning(f"⚠️ Summary generation failed: {e}")
             session_logger.warning(f"Summary generation failed: {e}")
+            state["fullSummaryForCallback"] = state["agentNotes"]  # Fallback to basic detection
     
     # ============================================
     # DYNAMIC CALLBACK CHECK

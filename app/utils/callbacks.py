@@ -198,12 +198,15 @@ def send_final_callback(session_id: str, state: dict) -> bool:
     try:
         intelligence = ExtractedIntelligence(**state["extractedIntelligence"])
         
+        # Use full summary if available, otherwise use basic agentNotes
+        callback_notes = state.get("fullSummaryForCallback", state["agentNotes"])
+
         payload = GuviCallback(
             sessionId=session_id,
             scamDetected=state["scamDetected"],
             totalMessagesExchanged=state["totalMessages"],
             extractedIntelligence=intelligence,
-            agentNotes=state["agentNotes"]
+            agentNotes=callback_notes  # <- Full intelligence summary
         )
         
         logger.info(f"\n{'='*70}")
