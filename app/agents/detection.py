@@ -35,6 +35,8 @@ SCAM_KEYWORDS = [
     "congratulations", "winner", "prize", "lottery",
     "send otp", "share otp", "verify now",
     "confirm", "blocked", "suspended",
+    "electricity", "cut off", "disconnect", "apk", "download app",
+    "quicksupport", "anydesk", "teamviewer", "remote access"
 ]
 
 
@@ -154,7 +156,7 @@ LEGIT_TRAINING_DATA = [
     "My laptop is acting slow. Do you know any good repair shops?",
     "Let's plan a trip for the summer holidays.",
     "I just got my salary. Time to treat myself.",
-    "The electricity bill needs to be paid by the end of the month.",
+    "The project report needs to be submitted by the end of the month.",
     "Have you updated your resume for campus placements?",
     "The gym is closed today due to maintenance.",
     "I found a good deal on that jacket we saw last week.",
