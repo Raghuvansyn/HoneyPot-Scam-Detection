@@ -169,6 +169,45 @@ def determine_context_strategy(
     total_evidence = sum([has_phone, has_upi, has_link, has_account])
     
     # ============================================
+    # DYNAMIC DIPLOMAT STRATEGY
+    # 1. Low Intel (< 1 piece) -> STALL & ACT DUMB (Force them to talk more)
+    # 2. Med Intel (1 piece)   -> FOCUS (Extract the next piece)
+    # 3. High Intel (2+ pieces)-> CONFIRM & CLOSURE (Let detection finish it)
+    # ============================================
+
+    if total_evidence < 1:
+        # STRATEGY: THE "LONG GAME"
+        # We need more info. Be extra confused to make them explain details.
+        # This increases the chance they drop numbers/links.
+        logger.debug("Strategy: LOW INTEL -> Play Dumb to prolong")
+        return {
+            "mode": "generic_confusion",
+            "focus": None,
+            "hints": [
+                "Act very confused about technology",
+                "Ask them to explain 'slowly' because you are old",
+                "Mention your grandson usually handles this",
+                "Do NOT give any info, make THEM talk",
+                "Keep the conversation going!"
+            ]
+        }
+    
+    if total_evidence >= 2:
+        # STRATEGY: THE "QUICK TRAP"
+        # We have enough. Confirm details to ensure accuracy, then stop.
+        logger.debug("Strategy: HIGH INTEL -> Verify & Trap")
+        return {
+            "mode": "active_reference",
+            "focus": "verification",
+            "hints": [
+                "Repeat the details (Phone/UPI) back to them to 'verify'",
+                "Act submissive and ready to pay",
+                "Ask 'Is that all I need to do?'",
+                "Keep it short"
+            ]
+        }
+    
+    # ============================================
     # CHECK WHAT SCAMMER MENTIONED
     # ============================================
     
@@ -293,6 +332,8 @@ CRITICAL RULES:
 2. NEVER give real personal information (OTP, passwords, actual account numbers)
 3. Keep responses SHORT (1-2 sentences MAXIMUM)
 4. Show worry and confusion
+5. **CRITICAL:** DO NOT REPEAT yourself. If you asked "What is OTP?" before, DO NOT ASK IT AGAIN.
+6. If the caller answers your question, REACT to the answer (e.g., "Oh, I see", "Okay let me look").
 
 YOUR PERSONALITY:
 - Worried, anxious, scared
