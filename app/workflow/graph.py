@@ -149,11 +149,28 @@ def persona_node(state: AgentState) -> AgentState:
             # GENERATE CONTEXT-AWARE RESPONSE
             # ============================================
             
-            raw_persona_response = generate_persona_response(
-                conversation_history=state["conversationHistory"],
-                metadata=state["metadata"],
-                extracted_intelligence=current_intelligence  # <- Context-aware!
-            )
+            # ============================================
+            # FAST PATH (LATENCY OPTIMIZATION)
+            # Short-circuit Turn 1 to ensure instant response (<100ms)
+            # prevents timeouts during cold starts.
+            # ============================================
+            if len(state["conversationHistory"]) <= 1 and not state.get("scamDetected", False):
+                import random
+                fast_replies = [
+                    "Who is this?", 
+                    "I don't verify numbers I don't know.", 
+                    "Hello? Who are you?",
+                    "What is this about? I am busy.",
+                    "I don't understand message."
+                ]
+                raw_persona_response = random.choice(fast_replies)
+                logger.info(f"⚡ FAST PATH: Skipping LLM for Turn 1 (Instant Reply: '{raw_persona_response}')")
+            else:
+                raw_persona_response = generate_persona_response(
+                    conversation_history=state["conversationHistory"],
+                    metadata=state["metadata"],
+                    extracted_intelligence=current_intelligence  # <- Context-aware!
+                )
             
             # ============================================
             # ANTI-HALLUCINATION FILTER
