@@ -130,8 +130,8 @@ def setup_logger(name: str = "honeypot") -> logging.Logger:
     # ============================================
     
     logger.addHandler(console_handler)
-    logger.addHandler(file_handler)
-    logger.addHandler(error_handler)
+    # logger.addHandler(file_handler)  # Disabled for Hackathon
+    # logger.addHandler(error_handler) # Disabled for Hackathon
     
     return logger
 

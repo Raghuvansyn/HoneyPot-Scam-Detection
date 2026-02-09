@@ -4,7 +4,7 @@ Data Models using Pydantic
 Updated to match judge's requirements with new response schema.
 """
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Literal, Union
 
 # ============================================
@@ -23,7 +23,7 @@ class Message(BaseModel):
     }
     """
     sender: str          # "scammer" or "user"
-    text: str            # The actual message content
+    text: str = Field(..., max_length=10000, description="Message content (max 10k chars)")            # The actual message content
     timestamp: Union[str, int]       # ISO format (str) or Unix timestamp (int)
 
 

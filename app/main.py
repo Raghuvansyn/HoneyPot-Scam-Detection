@@ -48,25 +48,7 @@ async def shutdown_event():
     logger.info("SHUTDOWN: HONEYPOT API SHUTTING DOWN")
     logger.info("="*70)
 
-@app.middleware("http")
-async def log_requests(request: Request, call_next):
-    """Log all incoming requests"""
-    start_time = time.time()
-    
-    try:
-        logger.info(f"REQ:  {request.method} {request.url.path}")
-    except Exception:
-        pass
-    
-    response = await call_next(request)
-    
-    duration = time.time() - start_time
-    try:
-        logger.info(f"RES:  {request.method} {request.url.path} - {response.status_code} ({duration:.2f}s)")
-    except Exception:
-        pass
-    
-    return response
+
 
 @app.get("/")
 async def root():

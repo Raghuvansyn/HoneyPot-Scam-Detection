@@ -70,7 +70,7 @@ def load_session_node(state: AgentState) -> AgentState:
     return state
 
 
-def detection_node(state: AgentState) -> AgentState:
+async def detection_node(state: AgentState) -> AgentState:
     """
     Node 2: Run scam detection (only on first message).
     
@@ -89,7 +89,8 @@ def detection_node(state: AgentState) -> AgentState:
         with PerformanceLogger("Detection Agent", logger):
             last_message = state["conversationHistory"][-1]["text"]
             
-            is_scam, confidence = detect_scam(last_message)
+            # Now await the async function
+            is_scam, confidence = await detect_scam(last_message)
             
             state["scamDetected"] = is_scam
             state["agentNotes"] = f"Detection: {'SCAM' if is_scam else 'LEGITIMATE'} (confidence: {confidence:.2f})"
@@ -106,7 +107,7 @@ def detection_node(state: AgentState) -> AgentState:
     return state
 
 
-def persona_node(state: AgentState) -> AgentState:
+async def persona_node(state: AgentState) -> AgentState:
     """
     Node 3: Generate context-aware persona response using LLM.
     
@@ -166,7 +167,7 @@ def persona_node(state: AgentState) -> AgentState:
                 raw_persona_response = random.choice(fast_replies)
                 logger.info(f"⚡ FAST PATH: Skipping LLM for Turn 1 (Instant Reply: '{raw_persona_response}')")
             else:
-                raw_persona_response = generate_persona_response(
+                raw_persona_response = await generate_persona_response(
                     conversation_history=state["conversationHistory"],
                     metadata=state["metadata"],
                     extracted_intelligence=current_intelligence  # <- Context-aware!
@@ -612,9 +613,11 @@ async def run_honeypot_workflow(request: HoneypotRequest) -> JudgeResponse:
     try:
         logger.info("[EXEC] Executing workflow graph...")
         
-        from fastapi.concurrency import run_in_threadpool
+        # from fastapi.concurrency import run_in_threadpool  # No longer needed for async graph
         with PerformanceLogger("Full Workflow", logger):
-            final_state = await run_in_threadpool(WORKFLOW_GRAPH.invoke, initial_state)
+            # Graph is now fully async (or compiled as such), so we can direct invoke if compatible 
+            # or continue using ainvoke if LangGraph supports it natively (it does).
+            final_state = await WORKFLOW_GRAPH.ainvoke(initial_state)
         
         logger.info(f"\n{'='*70}")
         logger.info(f"OK: LANGGRAPH WORKFLOW COMPLETED")

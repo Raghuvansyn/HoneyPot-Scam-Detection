@@ -43,7 +43,7 @@ def get_llm():
         max_tokens=200
     )
 
-def generate_persona_response(
+async def generate_persona_response(
     conversation_history: list,
     metadata: dict,
     extracted_intelligence: dict = None
@@ -110,7 +110,7 @@ Generate your next response as the elderly person. Remember:
 Your response:"""
         
         # ============================================
-        # CALL LLM
+        # CALL LLM (ASYNC)
         # ============================================
         
         messages = [
@@ -118,7 +118,8 @@ Your response:"""
             HumanMessage(content=user_prompt)
         ]
         
-        response = llm.invoke(messages)
+        # KEY PERFORMANCE FIX: Use ainvoke (async) instead of invoke (blocking)
+        response = await llm.ainvoke(messages)
         persona_text = response.content.strip()
         
         # Clean up response
