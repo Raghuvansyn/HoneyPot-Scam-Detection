@@ -211,8 +211,16 @@ def _train_model() -> Pipeline:
     logger.info("✅ ML model trained (TF-IDF + SVM, 100 samples)")
     return model
 
-# Train once when module loads
-_ML_MODEL = _train_model()
+_ML_MODEL = None
+
+def get_ml_model():
+    """Lazy load the ML model to prevent import-time blocking."""
+    global _ML_MODEL
+    if _ML_MODEL is None:
+        logger.info("⏳ Training ML model (Lazy Load)...")
+        _ML_MODEL = _train_model()
+        logger.info("✅ ML model ready")
+    return _ML_MODEL
 
 
 def ml_classify(text: str) -> dict:
@@ -225,8 +233,9 @@ def ml_classify(text: str) -> dict:
             "confidence": float 0.0–1.0
         }
     """
-    prediction = _ML_MODEL.predict([text])[0]
-    confidence = abs(_ML_MODEL.decision_function([text])[0])
+    model = get_ml_model()
+    prediction = model.predict([text])[0]
+    confidence = abs(model.decision_function([text])[0])
     confidence = min(round(confidence, 2), 1.0)
 
     return {

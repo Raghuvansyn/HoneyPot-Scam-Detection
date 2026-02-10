@@ -8,9 +8,9 @@ import logging
 import sys
 
 # Force UTF-8 on Windows for emoji support
-if sys.platform == "win32":
-    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
-    sys.stderr.reconfigure(encoding='utf-8', errors='replace')
+# if sys.platform == "win32":
+#     sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+#     sys.stderr.reconfigure(encoding='utf-8', errors='replace')
 from pathlib import Path
 from datetime import datetime
 import os

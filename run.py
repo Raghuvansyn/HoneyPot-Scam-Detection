@@ -14,8 +14,8 @@ if __name__ == "__main__":
     print("STARTING HONEYPOT API")
     print("="*70)
     print()
-    print("API:  http://localhost:8000")
-    print("Docs: http://localhost:8000/docs")
+    print("API:  http://127.0.0.1:8002")
+    print("Docs: http://127.0.0.1:8002/docs")
     print()
     print("Press Ctrl+C to stop")
     print("="*70)
@@ -23,7 +23,7 @@ if __name__ == "__main__":
     
     uvicorn.run(
         "app.main:app",
-        host="0.0.0.0",
-        port=8000,
-        reload=True  # Auto-reload on code changes
+        host="127.0.0.1",
+        port=8002,
+        reload=False
     )

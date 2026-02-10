@@ -12,6 +12,7 @@ from app.workflow.graph import run_honeypot_workflow
 from app.config import API_KEY
 from app.utils import logger, log_request, log_error  # <- Using centralized logger
 import time
+from fastapi.concurrency import run_in_threadpool
 
 # Create FastAPI app
 app = FastAPI(
@@ -28,12 +29,12 @@ async def startup_event():
     logger.info("STARTUP: HONEYPOT API STARTING")
     logger.info("="*70)
     
-    # Initialize DB immediately
-    try:
-        db = SessionManager()
-        logger.info("OK: Database initialized and tables created")
-    except Exception as e:
-        logger.error(f"ERR: Database initialization failed: {e}")
+    # Initialize DB immediately (in threadpool to avoid blocking loop)
+    # try:
+    #     await run_in_threadpool(SessionManager)
+    #     logger.info("OK: Database initialized and tables created")
+    # except Exception as e:
+    #     logger.error(f"ERR: Database initialization failed: {e}")
         
     logger.info("OK: Logging system initialized")
     logger.info("OK: Database ready")
@@ -167,6 +168,7 @@ async def honeypot_endpoint(
             status_code=500,
             detail=f"Internal server error: {str(e)}"
         )
+    # return JudgeResponse(status="mock", reply="debug mode", meta={"agentState": "engaging", "sessionStatus": "active", "persona": "debug", "turn": 0, "agentNotes": ""})
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):

@@ -4,9 +4,7 @@ Context-Aware Persona Agent
 Actively references extraction ONLY when we need more intelligence.
 Stops when we have enough evidence.
 """
-from langchain_cerebras import ChatCerebras
-from langchain_cerebras import ChatCerebras
-from langchain_groq import ChatGroq
+# Imports moved inside get_llm to prevent blocking
 from langchain_core.messages import SystemMessage, HumanMessage
 from app.config import (
     CEREBRAS_API_KEY, 
@@ -20,6 +18,9 @@ from app.utils import logger
 
 def get_llm():
     """Get LLM with fallback logic"""
+    
+    from langchain_cerebras import ChatCerebras
+    from langchain_groq import ChatGroq
     
     if LLM_PROVIDER == "cerebras" and CEREBRAS_API_KEY:
         try:

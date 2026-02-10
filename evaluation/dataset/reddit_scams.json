@@ -1,0 +1,42 @@
+[
+  {
+    "category": "pig_butchering",
+    "text": "Hi, is this Sarah? I think we met at the gym last week. Are you still going to the yoga class?",
+    "source": "Reddit r/scams (Generic Soft Start)"
+  },
+  {
+    "category": "job_scam",
+    "text": "Greetings! We are hiring for part-time online job. You can earn 5000-10000 INR daily by liking YouTube videos. Reply YES for details.",
+    "source": "Whatsapp Task Scam"
+  },
+  {
+    "category": "electricity_scam",
+    "text": "Dear customer, your electricity power will be disconnected tonight at 9:30 PM because your previous month bill was not updated. Please call our officer immediately 98xxxxxxxxx.",
+    "source": "SMS Scam (India)"
+  },
+  {
+    "category": "customs_scam",
+    "text": "This is Mumbai Customs Department. A parcel in your name containing 5 passports and 200g MDMA has been detained. Press 9 to speak to an officer.",
+    "source": "IVR/Call Scam Script"
+  },
+  {
+    "category": "bank_kyc",
+    "text": "Dear user, your SBI account will be blocked today due to pending KYC. Please click the link to update your PAN card immediately: http://bit.ly/update-kyc",
+    "source": "Phishing SMS"
+  },
+  {
+    "category": "sextortion",
+    "text": "I have recorded you visiting adult websites. If you do not pay $500 in Bitcoin, I will send the video to all your contacts.",
+    "source": "Email Extortion"
+  },
+  {
+    "category": "upi_fraud",
+    "text": "Sir I am sending you QR code for payment. Scan it to receive your cashback of Rs 2000.",
+    "source": "OLX Scam"
+  },
+  {
+    "category": "fake_representative",
+    "text": "This is Officer Rajesh form Cyber Crime Branch. An FIR has been filed against your Aadhaar number for money laundering.",
+    "source": "Digital Arrest Scam"
+  }
+]
