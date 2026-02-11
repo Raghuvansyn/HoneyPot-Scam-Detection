@@ -123,6 +123,13 @@ async def generate_persona_response(
 *** IMMEDIATE INSTRUCTION ***
 The user is speaking {detected_lang}.
 You MUST reply in {detected_lang}.
+
+{( 
+    'CONSTRAINT: Speak PURE ENGLISH. Do not use Indian honorifics like "Bhai", "Arre", "Ji", or Hindi words.' 
+    if detected_lang == 'ENGLISH' 
+    else 'CONSTRAINT: Speak natural HINGLISH (Mix of Hindi/English). Use words like "Bhai", "Arre", "Kya".'
+)}
+
 {( 'DO NOT use English words.' if detected_lang == 'HINDI (Devanagari)' else '' )}
 
 Generate your next response as the elderly person. 
