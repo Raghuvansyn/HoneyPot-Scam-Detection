@@ -2,22 +2,44 @@
 
 import re
 
+def normalize_before_extract(text: str) -> str:
+    """Pre-process obfuscated intel before regex runs (Strategy 1: Silent Intel)"""
+    
+    # 1. "at" → "@", "dot" → "."
+    text = re.sub(r'\s+at\s+', '@', text, flags=re.IGNORECASE)
+    text = re.sub(r'\s+dot\s+', '.', text, flags=re.IGNORECASE)
+    
+    # 2. Spaced characters: "9 8 7 6" → "9876"
+    # Collapses single digits separated by spaces
+    text = re.sub(r'(\d)\s+(\d)', r'\1\2', text)
+    
+    # 3. Word numbers (partial)
+    word_map = {
+        "zero":"0","one":"1","two":"2","three":"3","four":"4",
+        "five":"5","six":"6","seven":"7","eight":"8","nine":"9"
+    }
+    for word, digit in word_map.items():
+        text = re.sub(r'\b' + word + r'\b', digit, text, flags=re.IGNORECASE)
+    
+    return text
+
 def extract_intelligence(conversation_history: list) -> dict:
    
-    
     # Combine all message texts into one string for easier searching
     all_text = " ".join([
         msg.get("text", "") 
         for msg in conversation_history
     ])
     
-    # Extract different types of intelligence
+    # Run on BOTH original and normalized — merge results
+    normalized = normalize_before_extract(all_text)
+    
     intelligence = {
-        "bankAccounts": extract_bank_accounts(all_text),
-        "upiIds": extract_upi_ids(all_text),
-        "phishingLinks": extract_links(all_text),
-        "phoneNumbers": extract_phone_numbers(all_text),
-        "suspiciousKeywords": extract_keywords(all_text)
+        "bankAccounts":  list(set(extract_bank_accounts(all_text) + extract_bank_accounts(normalized))),
+        "upiIds":        list(set(extract_upi_ids(all_text)       + extract_upi_ids(normalized))),
+        "phishingLinks": list(set(extract_links(all_text)         + extract_links(normalized))),
+        "phoneNumbers":  list(set(extract_phone_numbers(all_text) + extract_phone_numbers(normalized))),
+        "suspiciousKeywords": extract_keywords(all_text) # Keywords usually fine on original
     }
     
     print(f" Extraction Results:")

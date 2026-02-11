@@ -48,6 +48,13 @@ evaluation/dataset/expanded_scams.json
 
 # Local Dev Tools
 dashboard.py
+tests/stress_verification_30.py
+tests/test_friend_payment.py
+tests/test_friend_vs_foe.py
+tests/test_infinite_loop.py
+tests/test_jailbreak.py
+tests/test_subtle_scammer.py
+tests/stress_limit_finder.py
 mock_judge.py
 pre_push_checks.py
 stress_test_concurrent.py

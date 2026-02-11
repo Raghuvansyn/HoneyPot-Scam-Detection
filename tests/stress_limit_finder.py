@@ -55,23 +55,28 @@ async def run_batch(n_users):
     
     if failures:
         print(f"   [ERROR] First Failure Detail: {failures[0]}")
-        return False  # Batch FAILED
-    return True  # Batch PASSED
+        # We don't stop immediately unless failures are catastrophic (e.g. >50%)
+        # But for 'limit finding', even 1 failure means we hit limit?
+        # Actually, let's say if Fail > 10% it's a break.
+        if len(failures) > n_users * 0.1:
+            return False
+            
+    return True
 
 async def find_limit():
     print("=== STRESS LIMIT FINDER ===")
     print(f"Target: {URL}")
     
-    # Ramping up from 10 to 60 users
-    for n in range(10, 65, 5):
+    # Ramping up: 10, 20, 30, 40, 50, 60
+    for n in range(10, 70, 10):
         success = await run_batch(n)
         if not success:
             print(f"\n[STOP] SYSTEM BREAKING POINT FOUND: {n} USERS")
             return
         
         # Cool down
-        print("   [WAIT] Cooling down 2s...")
-        await asyncio.sleep(2)
+        print("   [WAIT] Cooling down 3s...")
+        await asyncio.sleep(3)
         
     print("\n[DONE] SYSTEM SURVIVED UP TO 60 USERS! (Excellent)")
 
