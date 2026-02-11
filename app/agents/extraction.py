@@ -43,18 +43,34 @@ def extract_bank_accounts(text: str) -> list:
 
 def extract_upi_ids(text: str) -> list:
 
-    # [\w\.-]+ = one or more word characters, dots, or hyphens
-    # @ = literal @ symbol
-    pattern = r'\b[\w\.-]+@[\w\.-]+\b'
+    # Pattern 1: Standard UPI (e.g. user@oksbi)
+    pattern_std = r'\b[\w\.-]+@[\w\.-]+\b'
     
-    potential_upis = re.findall(pattern, text)
+    # Pattern 2: Obfuscated UPI ("user at okaxis dot com")
+    pattern_text = r'\b[\w\.-]+\s+(?:at|@)\s+[\w\.-]+\s+(?:dot|\.)\s+(?:com|in)\b'
+    
+    found_std = re.findall(pattern_std, text)
+    found_text = re.findall(pattern_text, text, re.IGNORECASE)
+    
+    # Normalize text matches (convert " at " to "@")
+    normalized_text = []
+    for t in found_text:
+        t = t.lower()
+        t = t.replace(" at ", "@").replace(" dot ", ".").replace(" ", "")
+        normalized_text.append(t)
+    
+    all_upis = found_std + normalized_text
     
     # Filter to only include valid UPI-like patterns
-    # (remove email addresses, keep UPI IDs)
     upis = [
-        u for u in potential_upis 
+        u for u in all_upis 
         if '@' in u and not u.endswith('.com') and not u.endswith('.in')
     ]
+    # But wait, "paytm.com" is valid handle? No, handles are usually simply "@paytm".
+    # But often people say "user@paytm.com".
+    # I'll relax the filter to allow .com if it looks like a UPI email.
+    
+    upis = [u for u in all_upis if '@' in u]
     
     # Remove duplicates and limit to 5
     return list(set(upis))[:5]
@@ -62,10 +78,13 @@ def extract_upi_ids(text: str) -> list:
 
 def extract_links(text: str) -> list:
 
-    # https? = http or https (? makes 's' optional)
-    # :// = literal ://
-    # [^\s]+ = one or more non-space characters
-    pattern = r'https?://[^\s]+'
+    # Pattern matches:
+    # 1. http:// or https:// (optional)
+    # 2. domain.com or sub.domain.co.in
+    # 3. /path/to/resource (optional)
+    
+    # Improved pattern that catches "bit.ly/xyz", "www.google.com", "http://..."
+    pattern = r'(?:https?://)?(?:www\.)?(?:bit\.ly|tinyurl\.com|goo\.gl|[a-zA-Z0-9-]+\.[a-zA-Z]{2,})/[^\s]*'
     
     links = re.findall(pattern, text)
     

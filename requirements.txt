@@ -4,9 +4,10 @@ uvicorn[standard]==0.27.0
 python-dotenv==1.0.0
 # Networking
 requests==2.31.0
+aiohttp==3.9.1
 # Pydantic
 pydantic==2.9.2
-# LangChain Ecosystem - Let pip resolve versions
+# LangChain Ecosystem
 langchain-groq
 langchain-cerebras
 langchain-openai

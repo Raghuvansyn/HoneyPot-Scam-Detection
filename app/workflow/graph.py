@@ -81,28 +81,42 @@ async def detection_node(state: AgentState) -> AgentState:
     session_logger = get_session_logger(session_id)
     
     logger.info(f"\n{'-'*70}")
-    logger.info(f"NODE: Detection Agent")
+    logger.info(f"NODE: Detection Agent (Turn {state['totalMessages']})")
     logger.info(f"{'-'*70}")
     
-    # Only run detection on first message
-    if state["totalMessages"] == 1:
-        with PerformanceLogger("Detection Agent", logger):
-            last_message = state["conversationHistory"][-1]["text"]
-            
-            # Now await the async function
-            is_scam, confidence = await detect_scam(last_message)
-            
-            state["scamDetected"] = is_scam
-            state["agentNotes"] = f"Detection: {'SCAM' if is_scam else 'LEGITIMATE'} (confidence: {confidence:.2f})"
+    # ALWAYS RUN DETECTION (Continuous Monitoring)
+    # Optimized: ML+Rules are fast enough to run every turn
+    with PerformanceLogger("Detection Agent", logger):
+        # Check specific message?
+        # Actually, we should check the LATEST message:
+        last_message = state["conversationHistory"][-1]["text"]
+        
+        # Now await the async function
+        is_scam, confidence = await detect_scam(last_message)
+        
+        # Update or Maintain scam status
+        # If EVER detected as scam, keep it true (Latch)
+        if is_scam:
+            state["scamDetected"] = True
+            state["agentNotes"] = f"Detection: SCAM (confidence: {confidence:.2f})"
             
             logger.info(f"{'='*70}")
-            logger.info(f"RESULT: {'SCAM DETECTED' if is_scam else 'NOT A SCAM'}")
+            logger.info(f"RESULT: SCAM DETECTED")
             logger.info(f"   Confidence: {confidence:.2f}")
             logger.info(f"{'='*70}")
-            
-            session_logger.info(f"Detection: scam={is_scam}, confidence={confidence:.2f}")
-    else:
-        logger.info(f"SKIP: Skipping detection (not first message)")
+        else:
+            # Only update notes if not previously detected
+            if not state.get("scamDetected", False):
+                state["agentNotes"] = f"Detection: SUSPICIOUS/SAFE (confidence: {confidence:.2f})"
+                logger.info(f"RESULT: No new scam indicators found")
+                
+                # SPECIAL HANDLING FOR TRUSTED SENDER (OTP/Bank)
+                # If confidence is exactly 0.0, we mark as trusted to skip Paranoid Probe
+                if confidence == 0.00:
+                    if not state.get("metadata"):
+                        state["metadata"] = {}
+                    state["metadata"]["isTrusted"] = True
+                    logger.info("🛡️ Trusted Sender → Marking for immediate Safe Exit")
     
     return state
 
@@ -309,72 +323,46 @@ def save_session_node(state: AgentState) -> AgentState:
     state["lastUpdated"] = datetime.now().isoformat() + "Z"
     
     # ============================================
-    # GENERATE SUMMARY
-    # ============================================
-    
-    # ============================================
-    # GENERATE SUMMARY (FOR CALLBACK ONLY)
-    # ============================================
-    
-    # Store complete summary with intelligence for CALLBACK
-    # This will be sent to GUVI endpoint ONLY, not to user
-    if state["scamDetected"] and state["totalMessages"] >= 3:
-        logger.info("📊 Generating conversation summary for callback...")
-        
-        # Extract detection confidence from agentNotes
-        detection_confidence = 0.5  # default
-        if "confidence:" in state.get("agentNotes", ""):
-            try:
-                conf_str = state["agentNotes"].split("confidence:")[1].split(")")[0].strip()
-                detection_confidence = float(conf_str)
-            except:
-                pass
-        
-        try:
-            complete_summary = get_conversation_summary(
-                conversation_history=state["conversationHistory"],
-                extracted_intelligence=state["extractedIntelligence"],
-                detection_confidence=detection_confidence,
-                scam_detected=state["scamDetected"]
-            )
-            
-            # Store in a SEPARATE field for callback only
-            state["fullSummaryForCallback"] = complete_summary
-            
-            logger.info(f"✅ Summary generated for callback")
-            session_logger.info(f"Callback summary: {complete_summary}")
-            
-        except Exception as e:
-            logger.warning(f"⚠️ Summary generation failed: {e}")
-            session_logger.warning(f"Summary generation failed: {e}")
-            state["fullSummaryForCallback"] = state["agentNotes"]  # Fallback to basic detection
-    
-    # ============================================
-    # DYNAMIC CALLBACK CHECK
+    # DYNAMIC TERMINATION & CALLBACK
     # ============================================
     
     if should_send_callback(state):
         # IDEMPOTENCY CHECK
         if state.get("callbackSent", False):
-            logger.info(f"⏭️  Callback ALREADY SENT previously. Skipping to prevent duplicates.")
-            session_logger.info("Callback skipped (idempotency check passed)")
+            logger.info(f"⏭️  Callback ALREADY SENT previously. Skipping.")
             state["sessionStatus"] = "closed"
-            # Proceed to save state (so sessionStatus is persisted)
         else:
-            logger.info(f"\n🏁 TERMINATION DECIDED - Sending final callback...")
-            session_logger.info("Conversation ending - sending callback to GUVI")
+            logger.info(f"\n🏁 TERMINATION DECIDED - Finalizing...")
+            session_logger.info("Conversation ending - preparing final report")
             
+            # GENERATE SUMMARY ONLY AT THE END (Lazy Summarization)
+            if state["scamDetected"] and state["totalMessages"] >= 3:
+                logger.info("📊 Generating final conversation summary for GUVI...")
+                try:
+                    # Extract confidence
+                    detection_confidence = 0.5
+                    if "confidence:" in state.get("agentNotes", ""):
+                        try:
+                            conf_str = state["agentNotes"].split("confidence:")[1].split(")")[0].strip()
+                            detection_confidence = float(conf_str)
+                        except: pass
+                    
+                    state["fullSummaryForCallback"] = get_conversation_summary(
+                        conversation_history=state["conversationHistory"],
+                        extracted_intelligence=state["extractedIntelligence"],
+                        detection_confidence=detection_confidence,
+                        scam_detected=state["scamDetected"]
+                    )
+                    logger.info("✅ Final summary generated")
+                except Exception as e:
+                    logger.warning(f"⚠️ Summary failed: {e}")
+                    state["fullSummaryForCallback"] = state["agentNotes"]
+
+            # SEND CALLBACK
             callback_success = send_final_callback(state["sessionId"], state)
-            
             if callback_success:
-                logger.info(f"✅ Final callback sent successfully")
-                session_logger.info("Final callback sent successfully")
-                state["callbackSent"] = True  # MARK AS SENT
-            else:
-                logger.warning(f"⚠️ Final callback failed")
-                session_logger.warning("Final callback failed")
+                state["callbackSent"] = True
             
-            # Mark conversation as closed
             state["sessionStatus"] = "closed"
     else:
         logger.info(f"🔄 Conversation continuing...")
@@ -401,29 +389,49 @@ def should_detect(state: AgentState) -> Literal["detection", "persona"]:
     """
     Route decision: Should we run detection?
     
-    Only detect on first message.
+    STRATEGY: CONTINUOUS MONITORING
+    We check EVERY message until we are sure it's a scam.
+    This catches "Slow Boil" scams that start with "Hi" (Safe)
+    and pivot to "Invest" (Scam) on Turn 3 or 4.
     """
-    if state["totalMessages"] == 1:
-        logger.debug("Routing: First message → Detection Agent")
-        return "detection"
-    else:
-        logger.debug("Routing: Not first message → Persona Agent")
+    # If already identified as scam, strictly go to persona (no need to re-detect)
+    if state.get("scamDetected", False):
+        logger.debug("Routing: Known Scam → Persona Agent")
         return "persona"
+    
+    # If not yet detected, ALWAYS CHECK.
+    # Our ML/Rules engine is fast enough (<50ms).
+    logger.debug(f"Routing: Message {state['totalMessages']} (Unverified) → Detection Agent")
+    return "detection"
 
 
 def route_after_detection(state: AgentState) -> Literal["persona", "not_scam"]:
     """
     Route decision: Is it a scam?
     
-    If scam → persona agent
-    If not scam → polite exit
+    STRATEGY: PARANOID ENGAGEMENT (Grace Period)
+    Even if the message looks "Safe" (e.g. "Hi"), we engage for 
+    at least 3 turns to see if they pivot to a scam.
     """
+    # 1. If explicitly detected as SCAM -> Engage
     if state["scamDetected"]:
-        logger.debug("Routing: Scam detected → Persona Agent")
+        logger.debug("Routing: Scam Detected → Persona Agent")
         return "persona"
-    else:
-        logger.debug("Routing: Not a scam → Polite Exit")
-        return "not_scam"
+    
+    # 2. If Trusted Sender (OTP) -> Polite Exit IMMEDIATELY
+    if state.get("metadata", {}).get("isTrusted", False):
+         logger.info("Routing: Trusted Sender (OTP/Bank) → Polite Exit (Skipping Probe)")
+         return "not_scam"
+    
+    # 3. If NOT detected, but loop count < 3 -> Engage anyway (Probe)
+    # This catches TC-01 (Soft Start) and TC-02 (Slow Boil)
+    if state["totalMessages"] <= 3:
+        logger.info(f"Routing: Suspicious/Soft Start (Turn {state['totalMessages']}) → Engaging to probe intent")
+        return "persona"
+        
+    # 3. If "Safe" and > 3 turns -> Polite Exit
+    logger.debug("Routing: Verified Safe (>3 turns) → Polite Exit")
+    return "not_scam"
 
 
 # ============================================

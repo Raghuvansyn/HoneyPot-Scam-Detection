@@ -17,11 +17,15 @@ venv/
 env/
 one/
 
+
 # Temporary/build files
 template.py
 sanity_check.py
 debug.py
 test_debug.py
+check_model.py
+test_brutal_scenarios.py
+
 
 # IDE
 .vscode/
@@ -41,3 +45,19 @@ stress_test_tool/
 # Evaluation Artifacts (Generated)
 evaluation/reports/
 evaluation/dataset/expanded_scams.json
+
+# Local Dev Tools
+dashboard.py
+mock_judge.py
+pre_push_checks.py
+stress_test_concurrent.py
+
+# Test Suites & Artifacts
+tests/evaluation_suite.py
+tests/failures.txt
+tests/test_report.txt
+# tests/test_brutal_scenarios.py is already ignored via line 27 (root pattern)
+
+# SQLite WAL
+*.db-shm
+*.db-wal
