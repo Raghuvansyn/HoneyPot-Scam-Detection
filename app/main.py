@@ -9,7 +9,7 @@ import time
 from fastapi import FastAPI, Header, HTTPException, Request
 from fastapi.responses import JSONResponse
 from fastapi.concurrency import run_in_threadpool
-from app.models import HoneypotRequest, JudgeResponse
+from app.models import HoneypotRequest, JudgeResponse, ResponseMeta
 from app.workflow.graph import run_honeypot_workflow
 from app.config import API_KEY
 from app.utils import logger, log_request, log_error
@@ -163,10 +163,10 @@ async def honeypot_endpoint(
             # STEP 4: Process with timeout protection
             # ============================================
             try:
-                # Hard timeout: 25 seconds max per request
+                # Hard timeout: 35 seconds max per request
                 response = await asyncio.wait_for(
                     run_honeypot_workflow(request),
-                    timeout=25.0
+                    timeout=35.0
                 )
 
                 elapsed = time.time() - start_time
