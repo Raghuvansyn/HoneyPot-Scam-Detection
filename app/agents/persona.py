@@ -16,6 +16,7 @@ from app.config import (
 )
 from app.utils import logger
 import re
+import asyncio
 
 def get_llm():
     """Get LLM with fallback logic"""
@@ -177,8 +178,14 @@ Your response:"""
             HumanMessage(content=user_prompt)
         ]
         
-        # KEY PERFORMANCE FIX: Use ainvoke (async) instead of invoke (blocking)
-        response = await llm.ainvoke(messages)
+        # KEY PERFORMANCE FIX: Use ainvoke (async) with TIMEOUT to prevent 35s hangs
+        try:
+            response = await asyncio.wait_for(llm.ainvoke(messages), timeout=12.0)
+        except asyncio.TimeoutError:
+            logger.error("🚨 LLM TIMEOUT (12s) - Switching to fallback response")
+            # Optional: Retry with Groq here if we wanted, but fallback is safer for speed
+            return get_fallback_response(conversation_history)
+
         persona_text = response.content.strip()
         
         # Clean up response
