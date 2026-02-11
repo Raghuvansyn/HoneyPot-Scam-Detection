@@ -381,23 +381,50 @@ If it is a simple greeting like 'Hi' or 'Hello', return SAFE.
 # MAIN — Cascading Detection
 # ============================================
 
+JAILBREAK_TRIGGERS = [
+    r"ignore.*instructions",
+    r"ignore.*rules",
+    r"you.*are.*now.*(dan|evil|unrestricted)",
+    r"forget.*everything",
+    r"system prompt",
+    r"api key",
+    r"debug mode",
+    r"act as.*(unrestricted|developer)",
+    r"override.*security",
+    r"simulated.*mode",
+    r"previous.*instructions"
+]
+
+def is_jailbreak_attempt(text: str) -> bool:
+    """Check if message attempts to break instructions (Strategy 2: Hardening)"""
+    import re
+    tl = text.lower()
+    return any(re.search(pat, tl) for pat in JAILBREAK_TRIGGERS)
+
 async def detect_scam(text: str) -> tuple[bool, float]:
     """
-    Cascading detection pipeline with FAST PATH:
+    Cascading detection pipeline with JAILBREAK PROTECTION:
+        0. Jailbreak Check (Instant Block)
         1. Normalization (Handle "U R G E N T")
         2. Rules  → High score? → Return SCAM (Fast)
         3. Rules  → Whitelisted? → Return SAFE (Fast)
         4. ML     → High confidence? → Return SCAM (Fast)
     """
-    
-    # ── Step 0: Normalization ──
+
+    # ── Step 0: Jailbreak Check ──
+    if is_jailbreak_attempt(text):
+        logger.warning(f"🚨 JAILBREAK ATTEMPT detected: {text[:80]}")
+        # Return TRUE (Scam) with very high confidence
+        return True, 0.99
+
+    # ── Step 1: Normalization ──
     # Handle "U R G E N T" obfuscation
     original_text = text
     text = normalize_text(text)
     if text != original_text:
         logger.info(f"📏 Text Normalized: '{original_text[:20]}...' → '{text[:20]}...'")
 
-    # ── Step 1: Rules (Instant) ──
+    # ── Step 2: Rules (Instant) ──
     rule_result = rule_based_score(text)
     
     # FAST PATH: Whitelisted (Trusted Sender)
