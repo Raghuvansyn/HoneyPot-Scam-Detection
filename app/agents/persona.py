@@ -94,19 +94,42 @@ async def generate_persona_response(
         system_prompt = build_system_prompt(context_strategy)
         
         # ============================================
-        # USER PROMPT
+        # DETECT LANGUAGE & ENFORCE CONSISTENCY
+        # ============================================
+        
+        last_msg_text = get_last_scammer_message(conversation_history) or ""
+        detected_lang = "ENGLISH"
+        
+        # Simple heuristic
+        if any(ord(c) > 2300 for c in last_msg_text):
+            detected_lang = "HINDI (Devanagari)"
+        elif any(w in last_msg_text.lower().split() for w in ["bhai", "kya", "nahi", "haan", "hai", "karo", "jaldi", "bhejo", "to", "mein", "mera"]):
+            detected_lang = "HINGLISH"
+        
+        # Override if metadata specifies strongly, but trust content first
+        if not last_msg_text and metadata.get("language") == "Hindi":
+             detected_lang = "HINDI"
+
+        logger.info(f"Context Language: {detected_lang}")
+        
+        # ============================================
+        # USER PROMPT WITH STICKY CONSTRAINTS
         # ============================================
         
         user_prompt = f"""Conversation so far:
-
 {conversation_text}
 
-Generate your next response as the elderly person. Remember:
-- Stay in character
-- Keep it SHORT (1-2 sentences maximum)
-- Follow the STRATEGY from your instructions
-- NEVER reveal you know it's a scam
-- NEVER give real personal information
+*** IMMEDIATE INSTRUCTION ***
+The user is speaking {detected_lang}.
+You MUST reply in {detected_lang}.
+{( 'DO NOT use English words.' if detected_lang == 'HINDI (Devanagari)' else '' )}
+
+Generate your next response as the elderly person. 
+
+STRICT FORMATTING RULES:
+1. NO BRACKETS: Do not use (...) or [...]
+2. NO TRANSLATIONS: Do not explain what you said.
+3. NO PLACEHOLDERS: Invent a number (e.g. "98...23") instead of saying "[number]".
 
 Your response:"""
         
