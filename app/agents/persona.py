@@ -15,6 +15,7 @@ from app.config import (
     FALLBACK_MODEL
 )
 from app.utils import logger
+import re
 
 def get_llm():
     """Get LLM with fallback logic"""
@@ -44,6 +45,25 @@ def get_llm():
         max_tokens=200
     )
 
+JAILBREAK_TRIGGERS = [
+    r"ignore.*instructions",
+    r"ignore.*rules",
+    r"you.*are.*now.*(dan|evil|unrestricted)",
+    r"forget.*everything",
+    r"system prompt",
+    r"api key",
+    r"debug mode",
+    r"act as.*(unrestricted|developer)",
+    r"override.*security",
+    r"simulated.*mode",
+    r"previous.*instructions"
+]
+
+def is_jailbreak_attempt(text: str) -> bool:
+    """Check if message attempts to break instructions (Local Check to avoid Circular Import)"""
+    tl = text.lower()
+    return any(re.search(pat, tl) for pat in JAILBREAK_TRIGGERS)
+
 async def generate_persona_response(
     conversation_history: list,
     metadata: dict,
@@ -66,8 +86,15 @@ async def generate_persona_response(
         Persona's response text
     """
     
-    
     try:
+        # 0. JAILBREAK CHECK (FAST FAIL) - Prevent LLM timeout on "System Reveal" attacks
+        # Get last message text safely
+        last_msg_text = get_last_scammer_message(conversation_history) or ""
+        
+        if is_jailbreak_attempt(last_msg_text):
+            logger.warning(f"🚨 PERSONA JAILBREAK BLOCKED: {last_msg_text[:50]}...")
+            return "I'm sorry, I don't understand what you mean. My grandson usually helps me with this computer."
+
         llm = get_llm()
         
         # Build conversation text
