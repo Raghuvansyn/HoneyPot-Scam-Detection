@@ -103,7 +103,8 @@ async def generate_persona_response(
         # Simple heuristic
         if any(ord(c) > 2300 for c in last_msg_text):
             detected_lang = "HINDI (Devanagari)"
-        elif any(w in last_msg_text.lower().split() for w in ["bhai", "kya", "nahi", "haan", "hai", "karo", "jaldi", "bhejo", "to", "mein", "mera"]):
+        # FIX: Removed "to" which caused false positives for English (e.g. "click to verify")
+        elif any(w in last_msg_text.lower().split() for w in ["bhai", "nahi", "haan", "kya", "karo", "jaldi", "bhejo", "mera", "mujhe", "tum"]):
             detected_lang = "HINGLISH"
         
         # Override if metadata specifies strongly, but trust content first
