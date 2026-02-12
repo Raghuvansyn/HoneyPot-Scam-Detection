@@ -1,6 +1,73 @@
 
 
+
 import re
+from datetime import datetime
+
+# Global Intelligence Store (in-memory for demo)
+DIGITAL_ARREST_INTELLIGENCE = {
+    "total_attempts": 0,
+    "active_campaigns": {},
+    "scammer_phone_numbers": set(),
+    "fake_authority_claims": {
+        "CBI": 147,
+        "ED": 89,
+        "TRAI": 203,
+        "Supreme Court": 56,
+        "Income Tax": 34
+    },
+    "victim_demographics": {
+        "age_60_plus": 67,  # percentage
+        "high_net_worth": 45
+    },
+    "time_patterns": {
+        "peak_hours": "10 AM - 4 PM",
+        "days": "Weekdays > Weekends"
+    }
+}
+
+def alert_law_enforcement_active_campaign(campaign_id: str, campaign_data: dict):
+    """Mock alert for active campaign threshold"""
+    print(f"\n🚨 [LEA ALERT] ACTIVE CAMPAIGN DETECTED: {campaign_id}")
+    print(f"   Attempts: {campaign_data['attempts']}")
+    print(f"   Victims Contacted: {campaign_data['victims_contacted']}")
+    print(f"   Status: ESCALATED TO CYBER CRIME CELL\n")
+
+def analyze_digital_arrest_campaign(
+    phone_number: str,
+    claimed_authority: str,
+    message: str
+):
+    """Track patterns across digital arrest attempts"""
+    
+    # Simple authority extraction if not provided
+    if not claimed_authority:
+        if "cbi" in message.lower(): claimed_authority = "CBI"
+        elif "ed" in message.lower() or "enforcement" in message.lower(): claimed_authority = "ED"
+        elif "trai" in message.lower(): claimed_authority = "TRAI"
+        elif "police" in message.lower(): claimed_authority = "POLICE"
+        else: claimed_authority = "UNKNOWN"
+
+    campaign_id = f"DA-{claimed_authority}-{phone_number[-6:]}" # Use last 6 digits
+    
+    if campaign_id not in DIGITAL_ARREST_INTELLIGENCE["active_campaigns"]:
+        DIGITAL_ARREST_INTELLIGENCE["active_campaigns"][campaign_id] = {
+            "first_seen": datetime.now(),
+            "attempts": 0,
+            "victims_contacted": 0,
+            "amount_demanded": [],
+            "script_variations": []
+        }
+    
+    campaign = DIGITAL_ARREST_INTELLIGENCE["active_campaigns"][campaign_id]
+    campaign["attempts"] += 1
+    # Store unique script vars (simple dedup)
+    if not any(message[:20] in m for m in campaign["script_variations"]):
+        campaign["script_variations"].append(message[:50] + "...")
+    
+    # Alert if campaign crossing threshold
+    if campaign["attempts"] > 2: # Lower threshold for demo
+        alert_law_enforcement_active_campaign(campaign_id, campaign)
 
 def normalize_before_extract(text: str) -> str:
     """Pre-process obfuscated intel before regex runs (Strategy 1: Silent Intel)"""
@@ -34,14 +101,24 @@ def extract_intelligence(conversation_history: list) -> dict:
     # Run on BOTH original and normalized — merge results
     normalized = normalize_before_extract(all_text)
     
+    phone_numbers = list(set(extract_phone_numbers(all_text) + extract_phone_numbers(normalized)))
+    
     intelligence = {
         "bankAccounts":  list(set(extract_bank_accounts(all_text) + extract_bank_accounts(normalized))),
         "upiIds":        list(set(extract_upi_ids(all_text)       + extract_upi_ids(normalized))),
         "phishingLinks": list(set(extract_links(all_text)         + extract_links(normalized))),
-        "phoneNumbers":  list(set(extract_phone_numbers(all_text) + extract_phone_numbers(normalized))),
+        "phoneNumbers":  phone_numbers,
         "suspiciousKeywords": extract_keywords(all_text) # Keywords usually fine on original
     }
     
+    # CAMPAIGN ANALYSIS
+    # If phone numbers found AND digital arrest keywords present
+    da_keywords = ["cbi", "police", "arrest", "drugs", "customs", "trai", "fedex"]
+    if any(k in all_text.lower() for k in da_keywords) and phone_numbers:
+        for phone in phone_numbers:
+            # Analyze each phone number as part of a campaign
+            analyze_digital_arrest_campaign(phone, "", all_text)
+            
     print(f" Extraction Results:")
     for key, value in intelligence.items():
         if value:

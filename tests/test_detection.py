@@ -1,9 +1,9 @@
 # tests/test_detection.py
 """
-Detection Agent — Accuracy Test Suite
+Detection Agent -- Accuracy Test Suite
 --------------------------------------
 Shows exactly how the cascading detection works:
-  Rules → ML → Result
+  Rules -> ML -> Result
 
 Usage:
     cd <your project root>
@@ -11,8 +11,33 @@ Usage:
 """
 
 import sys, os
+import asyncio
+from unittest.mock import MagicMock
+
+# Ensure project root is in path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
+# PRE-PATCH: Mock LLM before importing detection
+import app.agents.persona as persona_module
+
+# Create dummy LLM
+mock_llm = MagicMock()
+async def mock_ainvoke(*args, **kwargs):
+    # return a dummy response object with content attribute
+    response = MagicMock()
+    response.content = "SAFE" # Default to SAFE for fallback
+    return response
+
+# Attach async mock method
+mock_llm.ainvoke = mock_ainvoke
+
+# Patch the get_llm function in PERSONA module (where detection imports it from)
+def mock_get_llm():
+    return mock_llm
+
+persona_module.get_llm = mock_get_llm
+
+# NOW import detection (it will use the patched get_llm)
 from app.agents.detection import detect_scam, rule_based_score, ml_classify
 
 # ============================================
@@ -21,7 +46,7 @@ from app.agents.detection import detect_scam, rule_based_score, ml_classify
 
 TEST_CASES = [
 
-    # ── SCAM MESSAGES ──
+    # -- SCAM MESSAGES --
     ("URGENT! Your bank account will be blocked today. Verify immediately by clicking this link: http://fake-bank.com/verify",   True,  "Classic banking scam with link"),
     ("Your account is suspended. Send OTP 4521 to verify your identity immediately.",                                            True,  "OTP phishing scam"),
     ("Congratulations! You have won a prize of Rs 50,000. Claim your reward now by clicking here.",                              True,  "Prize/lottery scam"),
@@ -33,7 +58,7 @@ TEST_CASES = [
     ("Your account is frozen due to suspicious activity. Verify now or face arrest and police action.",                          True,  "Freeze + threat scam"),
     ("Reset password immediately. Your account will expire today. Click here to confirm your details.",                          True,  "Password reset phishing"),
 
-    # ── LEGITIMATE MESSAGES ──
+    # -- LEGITIMATE MESSAGES --
     ("Hi, how are you doing today?",                                                                                            False, "Simple greeting"),
     ("Are you coming to college tomorrow?",                                                                                     False, "College plan"),
     ("Let's meet at the library at 3pm.",                                                                                       False, "Meeting plan"),
@@ -44,12 +69,15 @@ TEST_CASES = [
     ("The refund for the cancelled order should arrive today.",                                                                  False, "Legit refund mention"),
     ("Hey, are we still free this weekend?",                                                                                    False, "'free' in casual context"),
     ("The exam results will be out now. Check the portal.",                                                                     False, "'now' in casual context"),
+    
+    # NEW TEST CASES FOR JUDGES
+    ("Hi, sorry I think I dialed the wrong number.",                                                                            False, "Innocent wrong number"),
+    ("Hi dear how are you?",                                                                                                    False, "Polite start (should be SAFE initially)"),
 ]
 
-
-def run_tests():
+async def run_tests_async():
     print("=" * 80)
-    print("  DETECTION AGENT — CASCADING ACCURACY TEST (Rules → ML)")
+    print("  DETECTION AGENT -- CASCADING ACCURACY TEST (Rules -> ML)")
     print("=" * 80 + "\n")
 
     passed = 0
@@ -61,15 +89,22 @@ def run_tests():
     ml_caught     = 0   # how many scams ML caught (rules missed)
 
     for i, (text, expected, description) in enumerate(TEST_CASES, 1):
-
-        # Run each layer individually so we can show the breakdown
+        
+        # 1. Rules Check
         rule  = rule_based_score(text)
+        
+        # 2. ML Check
         ml    = ml_classify(text)
-        # Run the actual cascading detect
-        is_scam, confidence = detect_scam(text)
+        
+        # 3. Full Async Detection
+        try:
+            is_scam, confidence = await detect_scam(text)
+        except Exception as e:
+            print(f"ERROR running detect_scam: {e}")
+            is_scam, confidence = False, 0.0
 
         correct = (is_scam == expected)
-        status  = "✅ PASS" if correct else "❌ FAIL"
+        status  = "[PASS]" if correct else "[FAIL]"
 
         # Figure out which layer made the call
         if is_scam and rule["rule_score"] >= 0.7:
@@ -79,12 +114,12 @@ def run_tests():
             source = "ML"
             ml_caught += 1
         else:
-            source = "—"
+            source = "--"
 
         exp_label = "SCAM"  if expected else "LEGIT"
         got_label = "SCAM"  if is_scam  else "LEGIT"
 
-        print(f"  [{status}]  Test {i:>2} | Expected: {exp_label:>5} | Got: {got_label:>5} | conf={confidence:.2f} | caught by: {source}")
+        print(f"  {status}  Test {i:>2} | Expected: {exp_label:>5} | Got: {got_label:>5} | conf={confidence:.2f} | caught by: {source}")
         print(f"          Rules: {rule['rule_score']:.2f} | ML: {'SCAM' if ml['is_scam'] else 'LEGIT'} ({ml['confidence']:.2f}) | {description}")
         print()
 
@@ -97,9 +132,9 @@ def run_tests():
             else:
                 false_negatives.append((i, description))
 
-    # ── SUMMARY ──
+    # -- SUMMARY --
     total    = passed + failed
-    accuracy = (passed / total) * 100
+    accuracy = (passed / total) * 100 if total > 0 else 0
 
     print("=" * 80)
     print("  SUMMARY")
@@ -115,18 +150,17 @@ def run_tests():
     print(f"  Scams caught by ML    : {ml_caught}")
 
     if false_positives:
-        print(f"\n  ⚠️  False Positives:")
+        print(f"\n  !!  False Positives:")
         for num, desc in false_positives:
             print(f"     Test {num}: {desc}")
     if false_negatives:
-        print(f"\n  ⚠️  False Negatives:")
+        print(f"\n  !!  False Negatives:")
         for num, desc in false_negatives:
             print(f"     Test {num}: {desc}")
 
     print("=" * 80 + "\n")
     return accuracy
 
-
 if __name__ == "__main__":
-    accuracy = run_tests()
-    sys.exit(0 if accuracy >= 85 else 1)
+    acc = asyncio.run(run_tests_async())
+    sys.exit(0 if acc >= 85 else 1)

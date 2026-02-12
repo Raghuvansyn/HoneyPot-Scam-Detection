@@ -12,10 +12,10 @@ import multiprocessing
 
 if __name__ == "__main__":
 
-    # Calculate optimal workers
-    # = (CPU cores * 2) + 1 is standard formula
+    # FOR DEMO PURPOSES: Use 1 worker to prevent messy logs on Windows
+    # In production, use (cpu_count * 2) + 1
     cpu_count = multiprocessing.cpu_count()
-    workers = (cpu_count * 2) + 1
+    workers = 1
 
     print("=" * 70)
     print("STARTING SCAMBAIT AI - HONEYPOT API")

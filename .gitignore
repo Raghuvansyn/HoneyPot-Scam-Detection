@@ -68,3 +68,17 @@ tests/test_report.txt
 # SQLite WAL
 *.db-shm
 *.db-wal
+
+# Recent temporary files
+test_da_v3.py
+test_da_debug.py
+test_results.txt
+test_local.py
+TEST_RESULTS.md
+
+# Scripts & Test Data
+demo*.ps1
+tests/manual_test.ps1
+tests/test_scenarios_judges.json
+tests/verify_diversity.py
+evaluation/run_dataset.py

@@ -14,7 +14,11 @@ from app.utils.logger import (
     logger
 )
 
-from app.utils.callbacks import send_final_callback, should_send_callback
+from app.utils.callbacks import (
+    send_final_callback, 
+    should_send_callback,
+    alert_law_enforcement_digital_arrest
+)
 
 __all__ = [
     "setup_logger",
@@ -26,5 +30,6 @@ __all__ = [
     "log_intelligence",
     "logger",
     "send_final_callback",
-    "should_send_callback"
+    "should_send_callback",
+    "alert_law_enforcement_digital_arrest"
 ]

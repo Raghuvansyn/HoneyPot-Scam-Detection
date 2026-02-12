@@ -21,7 +21,8 @@ from app.utils import (
     PerformanceLogger, 
     log_intelligence,
     send_final_callback,
-    should_send_callback
+    should_send_callback,
+    alert_law_enforcement_digital_arrest
 )
 
 
@@ -92,7 +93,7 @@ async def detection_node(state: AgentState) -> AgentState:
         last_message = state["conversationHistory"][-1]["text"]
         
         # Now await the async function
-        is_scam, confidence = await detect_scam(last_message)
+        is_scam, confidence, details = await detect_scam(last_message, session_id=session_id)
         
         # Update or Maintain scam status
         # If EVER detected as scam, keep it true (Latch)
@@ -100,9 +101,28 @@ async def detection_node(state: AgentState) -> AgentState:
             state["scamDetected"] = True
             state["agentNotes"] = f"Detection: SCAM (confidence: {confidence:.2f})"
             
+            # Store Digital Arrest Info
+            if details.get("is_digital_arrest"):
+                state["digitalArrestInfo"] = details
+                state["agentNotes"] += f" | 🚨 DIGITAL ARREST DETECTED ({details.get('severity', 'CRITICAL')})"
+            
             logger.info(f"{'='*70}")
             logger.info(f"RESULT: SCAM DETECTED")
             logger.info(f"   Confidence: {confidence:.2f}")
+            if details.get("is_digital_arrest"):
+                 logger.critical(f"   TYPE: DIGITAL ARREST ({details.get('severity', 'CRITICAL')})")
+                 
+                 # TRIGGER EMERGENCY RESPONSE IF NOT ALREADY SENT
+                 if not details.get("lea_alert_sent", False):
+                     await alert_law_enforcement_digital_arrest(
+                         session_id=session_id,
+                         message=last_message,
+                         intelligence=state["extractedIntelligence"],
+                         confidence=confidence
+                     )
+                 else:
+                     logger.info("   [INFO] LEA Alert sent by prevention module.")
+                     
             logger.info(f"{'='*70}")
         else:
             # Only update notes if not previously detected

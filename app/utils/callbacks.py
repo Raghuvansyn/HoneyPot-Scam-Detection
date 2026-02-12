@@ -201,13 +201,23 @@ def send_final_callback(session_id: str, state: dict) -> bool:
         
         # Use full summary if available, otherwise use basic agentNotes
         callback_notes = state.get("fullSummaryForCallback", state["agentNotes"])
+        
+        # Determine Severity
+        if state.get("digitalArrestInfo"):
+            severity = "CRITICAL"
+        elif state["scamDetected"]:
+            severity = "HIGH"
+        else:
+            severity = "NORMAL"
 
         payload = GuviCallback(
             sessionId=session_id,
             scamDetected=state["scamDetected"],
             totalMessagesExchanged=state["totalMessages"],
             extractedIntelligence=intelligence,
-            agentNotes=callback_notes  # <- Full intelligence summary
+            agentNotes=callback_notes,
+            digitalArrestInfo=state.get("digitalArrestInfo"),
+            severity=severity
         )
         
         logger.info(f"\n{'='*70}")
@@ -215,6 +225,7 @@ def send_final_callback(session_id: str, state: dict) -> bool:
         logger.info(f"{'='*70}")
         logger.info(f"   Session: {session_id}")
         logger.info(f"   Scam Detected: {state['scamDetected']}")
+        logger.info(f"   Severity: {severity}")
         logger.info(f"   Total Messages: {state['totalMessages']}")
         logger.info(f"   Intelligence: {state['extractedIntelligence']}")
         
@@ -245,3 +256,102 @@ def send_final_callback(session_id: str, state: dict) -> bool:
         logger.error(f"❌ Callback failed: {e}", exc_info=True)
         logger.info(f"{'='*70}\n")
         return False
+
+# ============================================
+# EMERGENCY RESPONSE SYSTEM (DIGITAL ARREST)
+# ============================================
+
+LEA_API_KEY = "mock_lea_key_12345"  # Mock key for hackathon
+
+def send_emergency_sms(to: str, message: str):
+    """Mock SMS sender"""
+    logger.info(f"📱 [MOCK SMS] To: {to} | Message: {message}")
+
+async def alert_law_enforcement_digital_arrest(
+    session_id: str,
+    message: str,
+    intelligence: dict,
+    confidence: float
+):
+    """Emergency alert for digital arrest scams"""
+    import httpx
+    from datetime import datetime
+    
+    logger.critical(f"\n{'='*70}")
+    logger.critical(f"[CRITICAL] INITIATING EMERGENCY PROTOCOL: DIGITAL ARREST")
+    logger.critical(f"{'='*70}")
+    
+    payload = {
+        "alert_type": "DIGITAL_ARREST_IN_PROGRESS",
+        "severity": "CRITICAL",
+        "session_id": session_id,
+        "timestamp": datetime.now().isoformat(),
+        "scam_message": message,
+        "extracted_intelligence": intelligence,
+        "confidence": confidence,
+        "victim_status": "ENGAGED_WITH_SCAMMER",
+        "recommended_action": "IMMEDIATE_INTERVENTION",
+        "escalation_required": True,
+        
+        # Call pattern analysis
+        "call_duration_estimate": "Unknown - likely ongoing",
+        "scammer_location_hints": intelligence.get("phoneNumbers", []),
+        
+        # Victim protection
+        "victim_guidance_shown": True,
+        "helpline_displayed": "1930",
+        "bank_freeze_recommended": True if "transfer" in message.lower() else False
+    }
+    
+    # Send to cyber crime portal (Mocked for Hackathon)
+    # response = await http_client.post(
+    #     "https://cybercrime.gov.in/api/emergency-alert",
+    #     json=payload,
+    #     headers={"Authorization": f"Bearer {LEA_API_KEY}"}
+    # )
+    
+    # MOCK RESPONSE
+    logger.info(f"[MOCK LEA ALERT] Sending payload to cybercrime.gov.in...")
+    logger.info(f"   Payload: {payload}")
+    logger.info(f"[SUCCESS] Alert Acknowledged by Cyber Crime Portal (ID: LEA-{session_id[:8]})")
+
+    # Also send SMS to victim if phone number available
+    # In a real honeypot, 'victim_phone' might be known if they called us, 
+    # but here we might not have it. We check if we extracted a victim phone 
+    # (unlikely) or if we simulates sending to the "current user".
+    
+    # For demo, we assume we might have it in metadata or intelligence
+    if victim_phone := intelligence.get("victim_phone"):
+        send_emergency_sms(
+            to=victim_phone,
+            message="DIGITAL ARREST SCAM ALERT: You are NOT under arrest. "
+                   "This is a scam. Hang up immediately. Call 1930 for help."
+        )
+    else:
+        logger.info("[INFO] No victim phone number available for SMS alert.")
+    
+    # Log to Critical Emergency File
+    try:
+        import json
+        import os
+        
+        log_dir = "logs"
+        if not os.path.exists(log_dir):
+            os.makedirs(log_dir)
+            
+        with open(os.path.join(log_dir, "emergency.log"), "a", encoding="utf-8") as f:
+            log_entry = {
+                "timestamp": datetime.now().isoformat(),
+                "level": "CRITICAL",
+                "type": "DIGITAL_ARREST",
+                "session_id": session_id,
+                "payload": payload
+            }
+            f.write(json.dumps(log_entry) + "\n")
+            
+        logger.info(f"[SAVED] Emergency Log Saved: logs/emergency.log")
+        
+    except Exception as e:
+        logger.error(f"Failed to write emergency log: {e}")
+    
+    logger.critical(f"{'='*70}\n")

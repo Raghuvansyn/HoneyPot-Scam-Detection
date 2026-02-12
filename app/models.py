@@ -166,6 +166,8 @@ class GuviCallback(BaseModel):
     totalMessagesExchanged: int
     extractedIntelligence: ExtractedIntelligence
     agentNotes: str
+    digitalArrestInfo: Optional[Dict] = None
+    severity: Optional[str] = "NORMAL"
 
 # ============================================
 # AGENT STATE (Internal Workflow State)
@@ -185,3 +187,4 @@ class AgentState(TypedDict):
     agentNotes: str                     # Notes about scammer behavior
     sessionStatus: Optional[str]        # "active" or "closed"
     callbackSent: bool                  # IDEMPOTENCY: Has final callback been sent?
+    digitalArrestInfo: Optional[Dict]   # Digital Arrest specific metadata

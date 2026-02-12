@@ -38,6 +38,28 @@ LEGIT_SENDERS = [
     "sent you", "paid you", "credited", "debited"
 ]
 
+DIGITAL_ARREST_PATTERNS = [
+    # Authority Impersonation
+    "cbi inspector", "cbi officer", "police inspector", 
+    "enforcement directorate", "income tax officer",
+    "trai", "supreme court", "high court",
+    
+    # Scam Triggers
+    "parcel seized", "drugs found", "fake passport",
+    "money laundering", "terror financing", "illegal activities",
+    "aadhaar linked", "bank accounts opened",
+    "non-bailable warrant", "arrest warrant issued",
+    
+    # Isolation Tactics  
+    "do not inform anyone", "do not tell family",
+    "video call hearing", "skype hearing", "zoom hearing",
+    "stay in one room", "digital arrest",
+    
+    # Pressure Tactics
+    "security deposit", "stay the arrest", "bail amount",
+    "within 3 hours", "immediate arrest", "contempt of court"
+]
+
 SCAM_KEYWORDS = [
     "account blocked", "verify", "urgent", "otp",
     "upi", "send money", "click link", "bank",
@@ -53,8 +75,12 @@ SCAM_KEYWORDS = [
     "electricity", "cut off", "disconnect", "bill not paid",
     "apk", "download app", "quicksupport", "anydesk",
     "job offer", "part-time", "daily income",
-    "sexual", "video", "leak", "exposure"
-]
+    "sexual", "video", "leak", "exposure",
+    
+    # Legacy / specific keywords
+    "fedex", "customs", "narcotics", "cyber crime",
+    "dhl", "parcel", "aadhaar block"
+] + DIGITAL_ARREST_PATTERNS
 
 # Regex patterns for TRULY trusted messages (OTP, Banks)
 TRUSTED_SENDER_PATTERNS = [
@@ -401,44 +427,95 @@ def is_jailbreak_attempt(text: str) -> bool:
     tl = text.lower()
     return any(re.search(pat, tl) for pat in JAILBREAK_TRIGGERS)
 
-async def detect_scam(text: str) -> tuple[bool, float]:
+from app.agents.digital_arrest import (
+    detect_digital_arrest,
+    generate_emergency_guidance,
+    alert_law_enforcement,
+    track_digital_arrest_attempt
+)
+from app.agents.extraction import extract_intelligence
+
+async def detect_scam(text: str, session_id: str = "unknown") -> tuple[bool, float, dict]:
     """
     Cascading detection pipeline with JAILBREAK PROTECTION:
         0. Jailbreak Check (Instant Block)
         1. Normalization (Handle "U R G E N T")
-        2. Rules  → High score? → Return SCAM (Fast)
-        3. Rules  → Whitelisted? → Return SAFE (Fast)
-        4. ML     → High confidence? → Return SCAM (Fast)
+        2. Digital Arrest Check (Critical - Prevention Module)
+        3. Rules  → High score? → Return SCAM (Fast)
+        4. Rules  → Whitelisted? → Return SAFE (Fast)
+        5. ML     → High confidence? → Return SCAM (Fast)
     """
 
     # ── Step 0: Jailbreak Check ──
     if is_jailbreak_attempt(text):
-        logger.warning(f"🚨 JAILBREAK ATTEMPT detected: {text[:80]}")
+        logger.warning(f"[P0] JAILBREAK ATTEMPT detected: {text[:80]}")
         # Return TRUE (Scam) with very high confidence
-        return True, 0.99
+        return True, 0.99, {"is_jailbreak": True}
 
     # ── Step 1: Normalization ──
     # Handle "U R G E N T" obfuscation
     original_text = text
     text = normalize_text(text)
     if text != original_text:
-        logger.info(f"📏 Text Normalized: '{original_text[:20]}...' → '{text[:20]}...'")
+        logger.info(f"Text Normalized: '{original_text[:20]}...' -> '{text[:20]}...'")
 
-    # ── Step 2: Rules (Instant) ──
+    # ── Step 2: Digital Arrest Prevention (Critical feature) ──
+    # Enhanced logic from app.agents.digital_arrest
+    da_assessment = detect_digital_arrest(text)
+    
+    if da_assessment["is_digital_arrest"]:
+        logger.critical(f"DIGITAL ARREST SCAM DETECTED: {text[:50]}...")
+        
+        # Track the attempt
+        track_digital_arrest_attempt(da_assessment)
+        
+        # Generator emergency guidance
+        guidance = generate_emergency_guidance(da_assessment)
+        
+        # Alert law enforcement immediately
+        # (Using imported module logic)
+        try:
+            # Fix: extract_intelligence expects a list of dicts (conversation history)
+            intelligence = extract_intelligence([{"sender": "scammer", "text": text}])
+            
+            lea_alert = alert_law_enforcement(
+                session_id=session_id,
+                message=text,
+                threat_assessment=da_assessment,
+                intelligence=intelligence
+            )
+            lea_sent = True
+        except Exception as e:
+            logger.error(f"Failed to alert LEA inside detect_scam: {e}")
+            lea_sent = False
+            lea_alert = {}
+
+        return True, da_assessment["confidence"], {
+            "source": "digital_arrest_prevention",
+            "category": "DIGITAL_ARREST",
+            "is_digital_arrest": True, # Keep for backward compatibility
+            "severity": da_assessment["severity"],
+            "victim_guidance": guidance,
+            "lea_alert_sent": lea_sent,
+            "lea_alert_payload": lea_alert,
+            **da_assessment
+        }
+
+    # ── Step 3: Rules (Instant) ──
     rule_result = rule_based_score(text)
     
     # FAST PATH: Whitelisted (Trusted Sender)
     if rule_result.get("whitelisted", False):
         logger.info(f"🛡️ Trusted Sender Detected → Skipping ML/LLM")
-        return False, 0.0
+        return False, 0.0, {}
 
     # Need at least 15% keyword match (4-5 keywords) to be confident
     if rule_result["rule_score"] >= 0.15:
         logger.info(f"🔍 Detection: SCAM detected by RULES (score={rule_result['rule_score']})")
         logger.info(f"   Matched keywords: {rule_result['matched_keywords']}")
-        return True, 0.95
+        return True, 0.95, {"keywords": rule_result["matched_keywords"]}
 
-    # ── Step 2: ML (Fast) ──
+    # ── Step 4: ML (Fast) ──
     # Run sync ML model in threadpool using NORMALIZED text
     from fastapi.concurrency import run_in_threadpool
     ml_result = await run_in_threadpool(ml_classify, text)
@@ -449,18 +526,18 @@ async def detect_scam(text: str) -> tuple[bool, float]:
     # FAST PATH 1: ML is confident it IS a scam
     if ml_result["is_scam"] and ml_result["confidence"] >= 0.7:
         logger.info("⚡ FAST PATH: ML is confident it is a SCAM.")
-        return True, ml_result["confidence"]
+        return True, ml_result["confidence"], {"source": "ml"}
 
     # FAST PATH 2: ML is confident it is SAFE (and Rules were 0)
     # If confidence is low (< 0.2) or it predicts NOT scam with high confidence
     if not ml_result["is_scam"] and ml_result["confidence"] >= 0.8:
         logger.info("⚡ FAST PATH: ML is confident it is SAFE.")
-        return False, 0.1
+        return False, 0.1, {"source": "ml"}
 
-    # ── Step 3: LLM Fallback (The "Vibe Check") ──
+    # ── Step 5: LLM Fallback (The "Vibe Check") ──
     # Only reachable if ML is "unsure" (0.2 - 0.7 confidence) or Rules failed
     logger.info("🤔 Detection is INCONCLUSIVE. Activating LLM Fallback (Vibe Check)...")
     
     is_scam, confidence = await llm_fallback_check(text)
     
-    return is_scam, confidence
+    return is_scam, confidence, {"source": "llm"}
