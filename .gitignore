@@ -82,3 +82,6 @@ tests/manual_test.ps1
 tests/test_scenarios_judges.json
 tests/verify_diversity.py
 evaluation/run_dataset.py
+
+# Pitch Decks
+WINNING_PITCH*.md
