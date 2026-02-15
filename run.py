@@ -34,7 +34,7 @@ if __name__ == "__main__":
     print()
 
     uvicorn.run(
-        "app.main:app",
+        "src.main:app",
         host="0.0.0.0",           # Accept from any IP (needed for hackathon)
         port=8002,
         reload=False,

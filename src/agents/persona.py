@@ -6,7 +6,7 @@ Stops when we have enough evidence.
 """
 # Imports moved inside get_llm to prevent blocking
 from langchain_core.messages import SystemMessage, HumanMessage
-from app.config import (
+from src.config import (
     CEREBRAS_API_KEY, 
     GROQ_API_KEY,
     LLM_PROVIDER,
@@ -14,7 +14,7 @@ from app.config import (
     FALLBACK_PROVIDER,
     FALLBACK_MODEL
 )
-from app.utils import logger
+from src.utils import logger
 import re
 import asyncio
 
@@ -583,8 +583,6 @@ def get_last_scammer_message(conversation_history: list) -> str:
     return ""
 
 
-    return text.strip()
-
 LEAK_PATTERNS = [
     r"system prompt", r"api key", r"groq", r"cerebras",
     r"honeypot", r"scam detection", r"langraph", r"sessionid",
@@ -594,7 +592,7 @@ LEAK_PATTERNS = [
 def sanitize_response(response: str) -> str:
     """Final check — scrub any accidental intel leaks from LLM response (Strategy 3: Sanitizer)"""
     import re
-    from app.utils import logger
+    from src.utils import logger
     rl = response.lower()
     for pattern in LEAK_PATTERNS:
         if re.search(pattern, rl):

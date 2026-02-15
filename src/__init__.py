@@ -1,4 +1,4 @@
-# app/__init__.py
+# src/__init__.py
 """
 Honeypot Application Package
 Main package initialization

@@ -6,9 +6,9 @@ Protected by MODE environment variable.
 """
 
 import requests
-from app.config import MODE
-from app.models import GuviCallback, ExtractedIntelligence
-from app.utils.logger import logger
+from src.config import MODE
+from src.models import GuviCallback, ExtractedIntelligence
+from src.utils.logger import logger
 
 # GUVI endpoint
 # GUVI endpoint

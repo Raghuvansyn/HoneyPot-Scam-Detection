@@ -6,7 +6,7 @@ Generates summary at END of conversation.
 """
 
 from typing import List, Dict
-from app.utils import logger
+from src.utils import logger
 
 def analyze_scam_timeline(conversation_history: list) -> str:
     """

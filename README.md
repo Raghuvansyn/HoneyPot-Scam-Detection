@@ -1,250 +1,91 @@
-# 🎯 ScamBait AI
-### *Turning the tables on scammers through intelligent conversation*
+# ScamBait AI
 
-<div align="center">
+**An AI-powered honeypot system that detects scams, engages scammers in realistic conversation, and extracts actionable intelligence for law enforcement.**
 
-![Python](https://img.shields.io/badge/Python-3.11+-blue.svg?style=for-the-badge&logo=python&logoColor=white)
-![FastAPI](https://img.shields.io/badge/FastAPI-0.109-009688.svg?style=for-the-badge&logo=fastapi&logoColor=white)
-![LangChain](https://img.shields.io/badge/🦜_LangChain-Latest-green.svg?style=for-the-badge)
-![Groq](https://img.shields.io/badge/Groq-AI-orange.svg?style=for-the-badge)
-![License](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)
-
-**🏆 Built for GUVI Hackathon 2026 🏆**
-
-[Live Demo](#) • [Documentation](project_report.md) • [Deployment Guide](DEPLOYMENT_GUIDE.md)
-
-</div>
+Built for the **GUVI Hackathon 2026**.
 
 ---
 
-## 🌟 The Problem We're Solving
+## Description
 
-Every year, **₹20,000 crores** are stolen from Indian citizens through digital scams. Traditional detection systems just block suspicious messages — but scammers simply change their tactics and continue targeting new victims.
+Traditional scam detection systems simply block suspicious messages. ScamBait AI takes a fundamentally different approach: it **engages** the scammer using a convincing AI persona, prolonging the conversation to extract phone numbers, UPI IDs, bank accounts, and phishing links. This intelligence is then automatically relayed to law enforcement endpoints.
 
-**We're taking a different approach:**
+**Core strategy:**
 
-Instead of blocking scams, we **engage** them. Our AI-powered honeypot pretends to be a confused elderly victim, causing scammers to reveal their phone numbers, UPI IDs, bank accounts, and phishing infrastructure. This intelligence gets automatically sent to law enforcement, enabling them to **shut down entire criminal operations** instead of just blocking individual messages.
+```
+Scam Detected  -->  Engage Scammer  -->  Extract Intelligence  -->  Report to LEA
+```
+
+The system uses a multi-agent architecture orchestrated via LangGraph, with a cascading detection pipeline (Rules -> ML -> LLM fallback) and context-aware persona generation that adapts its conversation strategy based on what intelligence has already been extracted.
 
 ---
 
-## 💡 What Makes This Different
+## Tech Stack
 
-### Traditional Approach ❌
-```
-Scam Detected → Block Message → End
-```
-**Result:** Scammer adjusts tactics, continues operating
+| Component | Technology | Purpose |
+|---|---|---|
+| **Framework** | FastAPI (async) | High-performance API with concurrency controls |
+| **Orchestration** | LangGraph | Multi-agent workflow with conditional routing |
+| **LLM Integration** | LangChain + Cerebras / Groq | Persona generation and fallback scam detection |
+| **ML Model** | scikit-learn (TF-IDF + LinearSVC) | Fast pattern-based scam classification |
+| **Database** | SQLite (WAL mode) | Session persistence with concurrent access |
+| **Language** | Python 3.11+ | Full ML/NLP ecosystem support |
 
-### ScamBait AI Approach ✅
-```
-Scam Detected → Engage Scammer → Extract Intelligence → Dismantle Operation
-```
-**Result:** Criminal infrastructure exposed and dismantled
-
----
-
-## 🚀 Key Features
-
-<table>
-<tr>
-<td width="50%">
-
-### 🔍 **Hybrid Detection Engine**
-- **Rules-based** keyword scoring (instant)
-- **ML-powered** pattern recognition (TF-IDF + SVM)
-- **100% accuracy** on test suite
-- Trained on 100 real scam samples
-
-</td>
-<td width="50%">
-
-### 🤖 **Intelligent Persona**
-- LLM-powered elderly character
-- Context-aware conversation strategy
-- Anti-hallucination safety filter
-- Realistic confusion & trust patterns
-
-</td>
-</tr>
-<tr>
-<td width="50%">
-
-### 🕵️ **Real-Time Intelligence**
-- Extracts: Phone numbers, UPI IDs, banks
-- Captures: Phishing links, keywords
-- Regex-based (no hallucination risk)
-- Comprehensive forensic logging
-
-</td>
-<td width="50%">
-
-### ⚡ **Smart Automation**
-- Dynamic conversation termination
-- Automatic law enforcement callbacks
-- Session persistence across messages
-- Production-ready error handling
-
-</td>
-</tr>
-</table>
+**LLM Models used:**
+- Primary: Cerebras `llama3.1-8b`
+- Fallback: Groq `llama-3.1-8b-instant`
 
 ---
 
-## 🎬 How It Works
-
-### 1️⃣ Detection Phase
-```python
-Incoming: "URGENT! Bank account blocked. Send OTP to 9876543210."
-
-Detection Engine:
-├─ Rules: 4 high-risk keywords found → Score: 0.18
-├─ ML Model: SCAM detected → Confidence: 1.00
-└─ Verdict: SCAM ✅
-```
-
-### 2️⃣ Engagement Phase
-```python
-Persona Response: "Oh no! What happened? I'm very worried! 
-                  Let me get my pen... what was that number again?"
-
-Strategy: Missing phone number → Ask scammer to repeat it slowly
-```
-
-### 3️⃣ Extraction Phase
-```python
-Intelligence Extracted:
-├─ Phone Number: +91-9876543210 ✅
-├─ UPI ID: scammer@paytm ✅
-├─ Keywords: ["urgent", "blocked", "send otp"] ✅
-└─ Confidence: HIGH (3 categories captured)
-```
-
-### 4️⃣ Intelligence Delivery
-```python
-Callback to Law Enforcement:
-{
-  "sessionId": "abc-123",
-  "scamDetected": true,
-  "extractedIntelligence": {
-    "phoneNumbers": ["+91-9876543210"],
-    "upiIds": ["scammer@paytm"],
-    ...
-  }
-}
-```
-
----
-
-## 📊 Performance Metrics
-
-<div align="center">
-
-| Metric | Result |
-|--------|--------|
-| **Detection Accuracy** | 100% (20/20 test cases) |
-| **Detection Speed** | <500ms |
-| **Persona Response Time** | 1-2 seconds |
-| **False Positives** | 0 |
-| **False Negatives** | 0 |
-| **Concurrent Sessions** | 100+ supported |
-
-</div>
-
----
-
-## 🛠️ Technology Stack
-
-| Component | Technology | Why We Chose It |
-|-----------|-----------|-----------------|
-| **Web Framework** | FastAPI | Async support, auto-docs, high performance |
-| **LLM Integration** | LangChain + Groq | Easy orchestration, fast inference (1-2s) |
-| **Workflow** | LangGraph | Multi-agent orchestration, state management |
-| **ML Model** | scikit-learn | Production-ready, fast training/inference |
-| **Database** | SQLite | Zero-config, embedded, perfect for scale |
-| **Language** | Python 3.11 | Rich ML/NLP ecosystem, rapid development |
-
----
-
-## 🚀 Quick Start
+## Setup Instructions
 
 ### Prerequisites
-```bash
-Python 3.11+
-Groq API key (free tier available)
-```
+
+- Python 3.11+
+- A Groq API key ([free tier available](https://console.groq.com))
+- A Cerebras API key (optional, Groq is used as fallback)
 
 ### Installation
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/YOUR_USERNAME/scambait-ai-honeypot.git
-cd scambait-ai-honeypot
+git clone https://github.com/diyaavirmani/HoneyPot-Scam-Detection.git
+cd HoneyPot-Scam-Detection
 
 # 2. Install dependencies
 pip install -r requirements.txt
 
-# 3. Set up environment variables
+# 3. Configure environment variables
 cp .env.example .env
-# Edit .env with your API keys
+# Edit .env and add your API keys
 
-# 4. Run the server
+# 4. Start the server
 python run.py
 ```
 
-Server starts at `http://localhost:8000` 🎉
+The server starts at `http://localhost:8002`. Interactive API docs are available at `http://localhost:8002/docs`.
 
 ---
 
-## 🧪 Testing
+## API Endpoint
 
-### Run Detection Tests
-```bash
-python tests/test_detection.py
-```
+| Field | Value |
+|---|---|
+| **Deployed URL** | `https://scambait-ai-production.up.railway.app/honeypot` |
+| **Alternate URL** | `https://scambait-ai-production.up.railway.app/api/v1/honeypot` |
+| **Method** | `POST` |
+| **Authentication** | `x-api-key` header |
+| **Content-Type** | `application/json` |
 
-**Expected Output:**
-```
-================================================================================
-  DETECTION AGENT — CASCADING ACCURACY TEST (Rules → ML)
-================================================================================
+### Request Format
 
-  Total tests       : 20
-  Passed            : 20
-  Failed            : 0
-  Accuracy          : 100.0%
-  False Positives   : 0
-  False Negatives   : 0
-================================================================================
-```
-
-### Interactive Testing with Swagger UI
-```
-Open: http://localhost:8000/docs
-```
-
----
-
-## 📡 API Documentation
-
-### Endpoint
-```
-POST /honeypot
-```
-
-### Authentication
-```http
-x-api-key: your_api_key_here
-Content-Type: application/json
-```
-
-### Request Example
 ```json
 {
-  "sessionId": "test-001",
+  "sessionId": "test-session-001",
   "message": {
     "sender": "scammer",
-    "text": "URGENT! Your bank blocked. Send OTP to 9876543210.",
-    "timestamp": "2026-02-03T10:00:00Z"
+    "text": "URGENT! Your bank account has been blocked. Send OTP to 9876543210.",
+    "timestamp": "2026-02-16T10:00:00Z"
   },
   "metadata": {
     "channel": "SMS",
@@ -254,7 +95,8 @@ Content-Type: application/json
 }
 ```
 
-### Response Example
+### Response Format
+
 ```json
 {
   "status": "success",
@@ -269,141 +111,194 @@ Content-Type: application/json
 }
 ```
 
----
+### cURL Example
 
-## 💼 Business Impact
-
-### Target Markets
-
-| Market | Problem Solved | Revenue Potential |
-|--------|----------------|-------------------|
-| **Banks & Financial Institutions** | Proactive fraud prevention | ₹100Cr+ market |
-| **Telecom Operators** | Platform abuse reduction | ₹50Cr+ market |
-| **Law Enforcement** | Intelligence gathering | Government contracts |
-| **Enterprise Security** | Internal threat detection | ₹30Cr+ market |
-
----
-
-## 🔒 Security & Ethics
-
-### Safeguards Implemented
-
-✅ **Anti-Hallucination Filter** - Prevents AI from generating fake sensitive data
-✅ **API Authentication** - Protects against unauthorized access
-✅ **Rate Limiting** - Prevents abuse and resource exhaustion
-✅ **Audit Logging** - Full forensic trail for legal compliance
-✅ **Privacy Protection** - Intelligence shared only with authorized endpoints
-
----
-
-## 📈 Roadmap
-
-### ✅ Phase 1 - Current
-- [x] Multi-layer detection engine
-- [x] Context-aware persona
-- [x] Real-time intelligence extraction
-- [x] Dynamic conversation termination
-- [x] API deployment
-
-### 🔄 Phase 2 - Next 3 Months
-- [ ] Multilingual support (Hindi, Tamil, Bengali)
-- [ ] Advanced conversation memory
-- [ ] Real-time monitoring dashboard
-
-### 🚀 Phase 3 - 6-12 Months
-- [ ] Federated learning across deployments
-- [ ] Criminal network visualization
-- [ ] Predictive scam detection
-
----
-
-## 📂 Project Structure
-
-```
-scambait-ai-honeypot/
-│
-├── app/
-│   ├── agents/
-│   │   ├── detection.py              # Cascading detection
-│   │   ├── persona.py                # Context-aware persona
-│   │   ├── extraction.py             # Intelligence extraction
-│   │   ├── hallucination_filter.py   # Safety guardrail
-│   │   └── timeline.py               # Summarization
-│   ├── workflow/
-│   │   ├── graph.py                  # LangGraph orchestration
-│   │   └── state.py                  # State management
-│   ├── database/
-│   │   └── persistence.py            # SQLite storage
-│   ├── main.py                       # FastAPI application
-│   ├── models.py                     # Pydantic schemas
-│   └── utils.py                      # Logging & callbacks
-│
-├── tests/
-│   ├── test_detection.py             # Accuracy tests
-│   ├── test_scam.json
-│   └── test_legit.json
-│
-├── requirements.txt
-├── run.py
-├── README.md
-├── DEPLOYMENT_GUIDE.md
-└── project_report.md
+```bash
+curl -X POST "https://scambait-ai-production.up.railway.app/honeypot" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "sessionId": "demo-001",
+    "message": {
+      "sender": "scammer",
+      "text": "Your KYC is pending. Update now or account will be frozen.",
+      "timestamp": "2026-02-16T10:00:00Z"
+    }
+  }'
 ```
 
 ---
 
-## 🏆 Hackathon Highlights
+## Approach
 
-### Innovation
-🌟 First honeypot to use context-aware LLM personas
-🌟 Novel cascading detection (Rules → ML)
-🌟 Ethical AI with hallucination prevention
+### How We Detect Scams
 
-### Technical Excellence
-⚡ 100% test accuracy on comprehensive suite
-⚡ Production-ready error handling
-⚡ Scalable architecture (100+ concurrent sessions)
+The detection engine uses a **cascading pipeline** — fast checks run first, expensive checks only when needed:
 
-### Social Impact
-❤️ Protects vulnerable elderly citizens
-❤️ Enables law enforcement to dismantle networks
-❤️ Supports India's digital transformation
+1. **Jailbreak Guard** — Instant block for prompt injection attempts
+2. **Text Normalization** — Defeats obfuscation like `U R G E N T` or word-to-digit tricks
+3. **Digital Arrest Module** — Specialized detector for India's most prevalent scam type (authority impersonation, arrest threats)
+4. **Rule-Based Scoring** — Keyword matching with whitelist for legitimate senders (OTPs, Amazon, banks)
+5. **ML Classifier** — TF-IDF + LinearSVC trained on 100 labeled samples (50 scam, 50 legitimate)
+6. **LLM Fallback** — "Vibe check" for ambiguous messages (pig butchering, multi-language scams) using Cerebras/Groq
 
----
+### How We Extract Intelligence
 
-## 👥 Team
+All extraction is **regex-based** (no LLM hallucination risk):
 
-**Project Lead:** Diya Virmani
-**Email:** diyavirmani41@gmail.com
-**GitHub:** https://github.com/diyaavirmani
+- **Phone numbers** — Indian formats: `+91-XXXXXXXXXX`, 10-digit, spaced digits
+- **UPI IDs** — Standard (`user@paytm`) and obfuscated (`user at paytm dot com`)
+- **Bank accounts** — 9-18 digit account numbers
+- **Phishing links** — URLs including shortened links (`bit.ly`, `tinyurl`)
+- **Suspicious keywords** — urgency markers, financial terms, threat language
 
-**Built for:** GUVI Hackathon 2026
+### How We Maintain Engagement
 
----
+The persona agent uses a **context-aware strategy** that adapts based on extracted intelligence:
 
-## 🙏 Acknowledgments
+| Intelligence State | Strategy | Goal |
+|---|---|---|
+| **0 items extracted** | Play dumb, act confused | Force scammer to repeat details |
+| **1 item extracted** | Targeted probing | Extract the next category |
+| **2+ items extracted** | Verify and confirm | Validate accuracy, then close |
 
-- **GUVI** for organizing this impactful hackathon
-- **Anthropic** for Claude AI development assistance
-- **Groq** for fast LLM inference
-- **Open Source Community** for incredible tools
-
----
-
-## 📚 Additional Resources
-
-- 📖 [Complete Project Report](project_report.md)
-- 🚀 [Deployment Guide](DEPLOYMENT_GUIDE.md)
-- 📊 [API Documentation](https://your-deployment-url.com/docs)
+Four distinct personas (Meena, Rohan, Ramesh, Mrs. Sharma) are assigned per session, each with unique personality traits and engagement styles. All responses pass through an **anti-hallucination filter** that catches any sensitive data the LLM might invent.
 
 ---
 
-<div align="center">
+## Architecture
 
-### ⭐ If this project helps protect even one person from fraud, it's a success ⭐
+```
+                          +-------------------+
+                          |   FastAPI Server   |
+                          | (Concurrency Mgr)  |
+                          +---------+---------+
+                                    |
+                          +---------v---------+
+                          |   LangGraph        |
+                          |   Workflow Engine   |
+                          +---------+---------+
+                                    |
+              +---------------------+---------------------+
+              |                     |                     |
+    +---------v-------+   +---------v-------+   +---------v-------+
+    | Detection Agent |   |  Persona Agent  |   | Extraction Agent|
+    | (Rules+ML+LLM)  |   | (LLM + Context) |   |  (Regex-based)  |
+    +-----------------+   +-----------------+   +-----------------+
+              |                     |                     |
+              +---------------------+---------------------+
+                                    |
+                          +---------v---------+
+                          |  Session Manager   |
+                          |  (SQLite + WAL)    |
+                          +-------------------+
+                                    |
+                          +---------v---------+
+                          |  GUVI Callback     |
+                          |  (Final Report)    |
+                          +-------------------+
+```
 
-**Built with ❤️ to make the digital world safer for everyone**
+**Workflow graph:** `START` -> `load_session` -> `detection` -> `persona` -> `extraction` -> `save_session` -> `END`
 
-[⬆ Back to Top](#-scambait-ai)
+Conditional routing after detection decides whether to engage (scam detected) or politely exit (legitimate message). A "paranoid engagement" mode keeps conversations going for at least 3 turns even for initially-safe messages, catching slow-boil scams that start with casual greetings.
 
-</div>
+---
+
+## Project Structure
+
+```
+HoneyPot-Scam-Detection/
+|
++-- README.md                         # Setup and usage instructions
++-- requirements.txt                  # Python dependencies
++-- .env.example                      # Environment variables template
++-- run.py                            # Local server startup script
++-- render.yaml                       # Render.com deployment config
++-- LICENSE                           # MIT License
+|
++-- src/                              # Source code
+|   +-- main.py                       # Main API implementation (FastAPI)
+|   +-- config.py                     # Environment variable management
+|   +-- models.py                     # Pydantic request/response schemas
+|   +-- database.py                   # SQLite session manager (WAL mode)
+|   |
+|   +-- agents/                       # Honeypot agent modules
+|   |   +-- detection.py              # Cascading scam detection (Rules -> ML -> LLM)
+|   |   +-- persona.py                # Context-aware persona generation
+|   |   +-- extraction.py             # Intelligence extraction (regex-based)
+|   |   +-- hallucination_filter.py   # Anti-hallucination safety layer
+|   |   +-- timeline.py               # Conversation summarization
+|   |   +-- digital_arrest.py         # Digital arrest scam specialization
+|   |
+|   +-- workflow/                     # LangGraph orchestration
+|   |   +-- graph.py                  # Workflow graph definition & execution
+|   |
+|   +-- utils/                        # Utilities
+|       +-- logger.py                 # Structured logging (console + file)
+|       +-- callbacks.py              # GUVI callback & dynamic termination
+|
++-- tests/                            # Test suite
+|   +-- test_detection.py             # Detection accuracy tests
+|   +-- test_strict_language.py       # Language consistency tests
+|   +-- stress_limit_finder.py        # Concurrency stress testing
+|   +-- test_scam.json                # Scam message samples
+|   +-- test_legit.json               # Legitimate message samples
+|
++-- evaluation/                       # Evaluation toolkit
+|   +-- README.md                     # Evaluation documentation
+|   +-- dataset/reddit_scams.json     # Reddit-sourced scam dataset
+|   +-- scripts/run_evaluation.py     # Batch evaluation runner
+|   +-- scripts/expand_prompts.py     # Prompt variation generator
+|
++-- docs/                             # Additional documentation
+    +-- architecture.md               # System architecture & design
+```
+
+---
+
+## Testing
+
+### Run Detection Accuracy Tests
+
+```bash
+python tests/test_detection.py
+```
+
+### Run Language Consistency Tests
+
+```bash
+python tests/test_strict_language.py
+```
+
+### Interactive API Testing
+
+Start the server and open the Swagger UI:
+
+```
+http://localhost:8002/docs
+```
+
+---
+
+## Key Features
+
+- **Hybrid Detection** — Rules + ML + LLM fallback in a cascading pipeline
+- **Context-Aware Persona** — LLM-generated responses that adapt based on extracted intelligence
+- **Real-Time Extraction** — Regex-based extraction of phone numbers, UPI IDs, bank accounts, and phishing links
+- **Digital Arrest Prevention** — Specialized module for authority-impersonation scams
+- **Anti-Hallucination Filter** — Catches fabricated sensitive data before it enters the conversation
+- **Dynamic Termination** — Ends conversations based on intelligence quality, not arbitrary turn limits
+- **Concurrency Safe** — Semaphore + session locks handle 50+ simultaneous sessions
+- **Graceful Degradation** — Always returns a valid response, never a 500 error
+
+---
+
+## Team
+
+Team Kaizen
+---
+
+## License
+
+This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.

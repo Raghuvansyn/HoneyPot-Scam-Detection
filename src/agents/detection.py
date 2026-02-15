@@ -20,8 +20,8 @@ but trained on 100 samples instead of 10.
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.svm import LinearSVC
 from sklearn.pipeline import Pipeline
-from app.utils import logger
-from app.agents.persona import get_llm
+from src.utils import logger
+from src.agents.persona import get_llm
 from langchain_core.messages import SystemMessage, HumanMessage
 
 # ============================================
@@ -427,13 +427,13 @@ def is_jailbreak_attempt(text: str) -> bool:
     tl = text.lower()
     return any(re.search(pat, tl) for pat in JAILBREAK_TRIGGERS)
 
-from app.agents.digital_arrest import (
+from src.agents.digital_arrest import (
     detect_digital_arrest,
     generate_emergency_guidance,
     alert_law_enforcement,
     track_digital_arrest_attempt
 )
-from app.agents.extraction import extract_intelligence
+from src.agents.extraction import extract_intelligence
 
 async def detect_scam(text: str, session_id: str = "unknown") -> tuple[bool, float, dict]:
     """
@@ -460,7 +460,7 @@ async def detect_scam(text: str, session_id: str = "unknown") -> tuple[bool, flo
         logger.info(f"Text Normalized: '{original_text[:20]}...' -> '{text[:20]}...'")
 
     # ── Step 2: Digital Arrest Prevention (Critical feature) ──
-    # Enhanced logic from app.agents.digital_arrest
+    # Enhanced logic from src.agents.digital_arrest
     da_assessment = detect_digital_arrest(text)
     
     if da_assessment["is_digital_arrest"]:

@@ -3,7 +3,7 @@
 Utilities Package
 """
 
-from app.utils.logger import (
+from src.utils.logger import (
     setup_logger,
     get_session_logger,
     PerformanceLogger,
@@ -14,7 +14,7 @@ from app.utils.logger import (
     logger
 )
 
-from app.utils.callbacks import (
+from src.utils.callbacks import (
     send_final_callback, 
     should_send_callback,
     alert_law_enforcement_digital_arrest

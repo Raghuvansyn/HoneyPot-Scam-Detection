@@ -3,13 +3,15 @@ services:
     name: scambait-ai
     env: python
     buildCommand: pip install -r requirements.txt
-    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    startCommand: uvicorn src.main:app --host 0.0.0.0 --port $PORT
     envVars:
+      - key: API_KEY
+        sync: false
       - key: GROQ_API_KEY
         sync: false
-      - key: HACKATHON_API_KEY
+      - key: CEREBRAS_API_KEY
         sync: false
-      - key: GUVI_CALLBACK_URL
-        value: https://hackathon.guvi.in/api/updateHoneyPotFinalResult
-      - key: LLM_MODEL
-        value: llama-3.1-8b-instant
+      - key: MODE
+        value: prod
+      - key: DATABASE_PATH
+        value: honeypot.db

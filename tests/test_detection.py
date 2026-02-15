@@ -18,7 +18,7 @@ from unittest.mock import MagicMock
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 # PRE-PATCH: Mock LLM before importing detection
-import app.agents.persona as persona_module
+import src.agents.persona as persona_module
 
 # Create dummy LLM
 mock_llm = MagicMock()
@@ -38,7 +38,7 @@ def mock_get_llm():
 persona_module.get_llm = mock_get_llm
 
 # NOW import detection (it will use the patched get_llm)
-from app.agents.detection import detect_scam, rule_based_score, ml_classify
+from src.agents.detection import detect_scam, rule_based_score, ml_classify
 
 # ============================================
 # TEST CASES

@@ -11,7 +11,7 @@ sensitive information, even if the LLM hallucinates it.
 """
 
 import re
-from app.utils import logger
+from src.utils import logger
 
 
 # ============================================

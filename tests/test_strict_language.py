@@ -9,7 +9,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 if sys.platform == "win32":
     sys.stdout.reconfigure(encoding='utf-8')
 
-from app.agents.persona import generate_persona_response
+from src.agents.persona import generate_persona_response
 
 async def test_strict_language():
     

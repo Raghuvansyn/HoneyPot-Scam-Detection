@@ -7,15 +7,15 @@ Proper graph-based agent orchestration with nodes, edges, state management, logg
 from datetime import datetime
 from typing import Literal
 from langgraph.graph import StateGraph, END
-from app.models import HoneypotRequest, Message, JudgeResponse, ResponseMeta, GuviCallback, ExtractedIntelligence, AgentState
-from app.database import SessionManager
-from app.agents.detection import detect_scam
-from app.agents.persona import generate_persona_response
-from app.agents.extraction import extract_intelligence
-from app.agents.hallucination_filter import validate_persona_output
-from app.agents.timeline import get_conversation_summary, calculate_confidence_level
+from src.models import HoneypotRequest, Message, JudgeResponse, ResponseMeta, GuviCallback, ExtractedIntelligence, AgentState
+from src.database import SessionManager
+from src.agents.detection import detect_scam
+from src.agents.persona import generate_persona_response
+from src.agents.extraction import extract_intelligence
+from src.agents.hallucination_filter import validate_persona_output
+from src.agents.timeline import get_conversation_summary, calculate_confidence_level
 
-from app.utils import (
+from src.utils import (
     logger, 
     get_session_logger, 
     PerformanceLogger, 
@@ -751,7 +751,7 @@ def visualize_graph():
     """
     Print the graph structure (for debugging).
     
-    Run with: python -c "from app.workflow.graph import visualize_graph; visualize_graph()"
+    Run with: python -c "from src.workflow.graph import visualize_graph; visualize_graph()"
     """
     print("\n" + "="*70)
     print("LANGGRAPH WORKFLOW STRUCTURE")

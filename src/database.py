@@ -8,7 +8,7 @@ import json
 import sqlite3
 import threading
 from typing import Optional, Dict
-from app.config import DATABASE_PATH
+from src.config import DATABASE_PATH
 
 
 # ============================================

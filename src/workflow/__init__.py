@@ -4,8 +4,8 @@ Workflow Package
 Contains LangGraph workflow and state definitions
 """
 
-from app.workflow.graph import run_honeypot_workflow
-from app.models import AgentState
+from src.workflow.graph import run_honeypot_workflow
+from src.models import AgentState
 
 __all__ = [
     "run_honeypot_workflow",

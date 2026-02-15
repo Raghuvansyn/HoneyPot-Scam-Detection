@@ -9,10 +9,10 @@ import time
 from fastapi import FastAPI, Header, HTTPException, Request
 from fastapi.responses import JSONResponse
 from fastapi.concurrency import run_in_threadpool
-from app.models import HoneypotRequest, JudgeResponse, ResponseMeta
-from app.workflow.graph import run_honeypot_workflow
-from app.config import API_KEY
-from app.utils import logger, log_request, log_error
+from src.models import HoneypotRequest, JudgeResponse, ResponseMeta
+from src.workflow.graph import run_honeypot_workflow
+from src.config import API_KEY
+from src.utils import logger, log_request, log_error
 
 # ============================================
 # CONCURRENCY CONTROLS
@@ -107,6 +107,7 @@ async def health_check():
 # MAIN HONEYPOT ENDPOINT
 # ============================================
 
+@app.post("/honeypot", response_model=JudgeResponse)
 @app.post("/api/v1/honeypot", response_model=JudgeResponse)
 async def honeypot_endpoint(
     request: HoneypotRequest,
