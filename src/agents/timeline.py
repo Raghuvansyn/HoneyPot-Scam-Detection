@@ -98,17 +98,14 @@ def get_conversation_summary(
     return " | ".join(parts)
 
 
-def calculate_confidence_level(detection_confidence: float, intelligence_count: int, message_count: int) -> str:
+def calculate_confidence_level(detection_confidence: float, intelligence_count: int, message_count: int) -> float:
     score = detection_confidence
     if intelligence_count >= 3:
         score += 0.1
     elif intelligence_count >= 1:
         score += 0.05
+
     if message_count >= 10:
         score += 0.05
 
-    if score >= 0.85:
-        return "high"
-    elif score >= 0.65:
-        return "medium"
-    return "low"
+    return min(score, 1.0)
