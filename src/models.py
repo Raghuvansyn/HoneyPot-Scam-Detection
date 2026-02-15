@@ -30,7 +30,7 @@ class ResponseMeta(BaseModel):
     sessionStatus: Literal["active", "closed"]
     persona: str
     turn: int
-    confidence: Optional[str] = None
+    confidence: Optional[float] = None
     agentNotes: str
 
 
@@ -84,3 +84,4 @@ class AgentState(TypedDict):
     sessionStatus: Optional[str]
     callbackSent: bool
     digitalArrestInfo: Optional[Dict]
+    detectionConfidence: Optional[float]

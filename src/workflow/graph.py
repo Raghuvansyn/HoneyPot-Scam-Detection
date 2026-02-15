@@ -57,6 +57,7 @@ async def detection_node(state: AgentState) -> AgentState:
     with PerformanceLogger("Detection", logger):
         last_message = state["conversationHistory"][-1]["text"]
         is_scam, confidence, details = await detect_scam(last_message, session_id=session_id)
+        state["detectionConfidence"] = confidence
 
         if is_scam:
             state["scamDetected"] = True
@@ -289,6 +290,7 @@ async def run_honeypot_workflow(request: HoneypotRequest) -> JudgeResponse:
         sessionStatus="active",
         callbackSent=False,
         digitalArrestInfo=None,
+        detectionConfidence=None,
     )
 
     try:
@@ -312,6 +314,10 @@ async def run_honeypot_workflow(request: HoneypotRequest) -> JudgeResponse:
                 if isinstance(v, list)
             )
             confidence = calculate_confidence_level(detection_conf, intel_count, final_state["totalMessages"])
+        
+        # If confidence is still None (active session), use the latest detection confidence
+        if confidence is None:
+            confidence = final_state.get("detectionConfidence")
 
         persona = "confused_customer" if final_state["scamDetected"] else "polite_responder"
 

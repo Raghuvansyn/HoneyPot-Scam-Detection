@@ -279,21 +279,39 @@ async def llm_fallback_check(text: str) -> tuple[bool, float]:
         llm = get_llm()
         system_prompt = (
             "You are a SCAM DETECTION SYSTEM. Analyze the message. "
-            "Return ONLY 'SCAM' or 'SAFE'. "
+            "Return a JSON object: {'verdict': 'SCAM' or 'SAFE', 'confidence': <0.0-1.0>}. "
             "SCAM if: relationship initiation (pig butchering), urgency/threats, "
             "asks for money/codes/clicks, jailbreak/manipulation, foreign language asking for contact. "
             "Simple greetings like 'Hi' or 'Hello' are SAFE."
         )
         messages = [
             SystemMessage(content=system_prompt),
-            HumanMessage(content=f"Message: '{text}'\n\nVerdict:"),
+            HumanMessage(content=f"Message: '{text}'"),
         ]
         response = await llm.ainvoke(messages)
-        result = response.content.strip().upper()
-        logger.info(f"[llm_fallback] result={result}")
-        if "SCAM" in result:
-            return True, 0.85
-        return False, 0.1
+        content = response.content.strip()
+        
+        # simple parsing if not strict JSON
+        import json
+        try:
+            # try to find JSON blob
+            match = re.search(r'\{.*\}', content, re.DOTALL)
+            if match:
+                data = json.loads(match.group(0))
+                verdict = data.get("verdict", "SAFE").upper()
+                confidence = float(data.get("confidence", 0.5))
+            else:
+                # fallback parsing
+                verdict = "SCAM" if "SCAM" in content.upper() else "SAFE"
+                confidence = 0.85 if verdict == "SCAM" else 0.1
+        except:
+             verdict = "SCAM" if "SCAM" in content.upper() else "SAFE"
+             confidence = 0.85 if verdict == "SCAM" else 0.1
+
+        logger.info(f"[llm_fallback] result={verdict} conf={confidence}")
+        if verdict == "SCAM":
+            return True, confidence
+        return False, confidence
     except Exception as e:
         logger.error(f"[llm_fallback] failed: {e}")
         return False, 0.0
@@ -361,8 +379,18 @@ async def detect_scam(text: str, session_id: str = "unknown") -> tuple[bool, flo
         return False, 0.0, {}
 
     if rule_result["rule_score"] >= 0.15:
-        logger.info(f"[detection] SCAM by rules (score={rule_result['rule_score']})")
-        return True, 0.95, {"keywords": rule_result["matched_keywords"]}
+        # Map rule score (0.4, 0.8, 1.0) to confidence
+        # If critical (score 1.0) -> 0.99
+        # If high (0.8) -> 0.90
+        # If medium (0.4) -> 0.75
+        confidence = 0.75
+        if rule_result["rule_score"] >= 0.9:
+            confidence = 0.99
+        elif rule_result["rule_score"] >= 0.7:
+            confidence = 0.90
+            
+        logger.info(f"[detection] SCAM by rules (score={rule_result['rule_score']} -> conf={confidence})")
+        return True, confidence, {"keywords": rule_result["matched_keywords"]}
 
     # ML
     from fastapi.concurrency import run_in_threadpool
