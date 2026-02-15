@@ -38,7 +38,9 @@ app = FastAPI(
 
 @app.on_event("startup")
 async def startup_event():
-    logger.info(f"ScamBait AI starting | max_concurrent={MAX_CONCURRENT}")
+    from src.config import CEREBRAS_API_KEY, GROQ_API_KEY, MODE
+    logger.info(f"ScamBait AI starting | max_concurrent={MAX_CONCURRENT} | mode={MODE}")
+    logger.info(f"LLM keys: cerebras={'SET' if CEREBRAS_API_KEY else 'MISSING'} | groq={'SET' if GROQ_API_KEY and GROQ_API_KEY != 'temp-key' else 'MISSING'}")
 
 
 @app.get("/")

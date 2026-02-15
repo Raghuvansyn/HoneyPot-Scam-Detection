@@ -19,10 +19,13 @@ def get_llm():
 
     if LLM_PROVIDER == "cerebras" and CEREBRAS_API_KEY:
         try:
-            return ChatCerebras(model=LLM_MODEL, api_key=CEREBRAS_API_KEY, temperature=0.8, max_tokens=200)
+            llm = ChatCerebras(model=LLM_MODEL, api_key=CEREBRAS_API_KEY, temperature=0.8, max_tokens=200)
+            logger.info(f"[llm] using Cerebras ({LLM_MODEL})")
+            return llm
         except Exception as e:
-            logger.warning(f"Cerebras failed: {e}, falling back to Groq")
+            logger.warning(f"[llm] Cerebras init failed: {e}")
 
+    logger.info(f"[llm] using Groq fallback ({FALLBACK_MODEL}) | groq_key_set={bool(GROQ_API_KEY and GROQ_API_KEY != 'temp-key')}")
     return ChatGroq(model=FALLBACK_MODEL, api_key=GROQ_API_KEY, temperature=0.8, max_tokens=200)
 
 
@@ -85,8 +88,12 @@ Your response:"""
 
         try:
             response = await asyncio.wait_for(llm.ainvoke(messages), timeout=12.0)
+            logger.info(f"[persona] LLM response received ({len(response.content)} chars)")
         except asyncio.TimeoutError:
-            logger.error("[persona] LLM timeout (12s)")
+            logger.error("[persona] LLM timeout (12s) - using fallback")
+            return get_fallback_response(conversation_history)
+        except Exception as llm_err:
+            logger.error(f"[persona] LLM call failed: {type(llm_err).__name__}: {llm_err}")
             return get_fallback_response(conversation_history)
 
         persona_text = clean_persona_response(response.content.strip())
