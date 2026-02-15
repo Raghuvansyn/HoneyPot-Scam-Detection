@@ -6,7 +6,7 @@ Built for the **GUVI Hackathon 2026**.
 
 | | |
 |---|---|
-| **Deployed URL** | `https://scambait-ai-production.up.railway.app/honeypot` |
+| **Deployed URL** | `https://scambait-ai-production.up.railway.app/api/v1/honeypot` |
 | **API Key** | `GUVI-Hackathon-2026-ScamBait-xK9mP2vL7qR3wT8` |
 | **GitHub** | [github.com/diyaavirmani/HoneyPot-Scam-Detection](https://github.com/diyaavirmani/HoneyPot-Scam-Detection) |
 
@@ -77,8 +77,8 @@ The server starts at `http://localhost:8002`. Interactive API docs are available
 
 | Field | Value |
 |---|---|
-| **Deployed URL** | `https://scambait-ai-production.up.railway.app/honeypot` |
-| **Alternate URL** | `https://scambait-ai-production.up.railway.app/api/v1/honeypot` |
+| **Deployed URL** | `https://scambait-ai-production.up.railway.app/api/v1/honeypot` |
+| **Alternate URL** | `https://scambait-ai-production.up.railway.app/honeypot` |
 | **Method** | `POST` |
 | **Authentication** | `x-api-key` header |
 | **Content-Type** | `application/json` |
@@ -120,7 +120,7 @@ The server starts at `http://localhost:8002`. Interactive API docs are available
 ### cURL Example
 
 ```bash
-curl -X POST "https://scambait-ai-production.up.railway.app/honeypot" \
+curl -X POST "https://scambait-ai-production.up.railway.app/api/v1/honeypot" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
