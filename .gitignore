@@ -85,3 +85,9 @@ evaluation/run_dataset.py
 
 # Pitch Decks
 WINNING_PITCH*.md
+
+# Manual Test Scripts
+test_eval.py
+tests/manual_tests.sh
+tests/manual_tests.ps1
+tests/scam_detection_tests.ps1

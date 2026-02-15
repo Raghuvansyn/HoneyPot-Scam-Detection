@@ -1,12 +1,12 @@
 # Web Framework
 fastapi==0.109.0
 uvicorn[standard]==0.27.0
-python-dotenv==1.0.0
+python-dotenv>=1.0.1
 # Networking
-requests==2.31.0
-aiohttp==3.9.1
+requests>=2.32.3
+aiohttp>=3.10
 # Pydantic
-pydantic==2.9.2
+pydantic>=2.11.5
 # LangChain Ecosystem
 langchain-groq
 langchain-cerebras
@@ -18,5 +18,5 @@ langgraph
 scikit-learn>=1.3.0
 # Utilities
 jiter
-openai
+openai<2.0.0
 tiktoken

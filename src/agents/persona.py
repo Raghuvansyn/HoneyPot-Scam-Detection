@@ -157,10 +157,10 @@ def determine_context_strategy(conversation_history: list, extracted_intelligenc
         return {"mode": "generic_confusion", "focus": None, "hints": ["Already have enough evidence, be vague"]}
 
     focus_map = [
-        (any(w in msg_text for w in ["call", "phone", "number", "dial", "contact"]) and not has_phone, "phone"),
-        (any(w in msg_text for w in ["upi", "paytm", "phonepe", "gpay", "payment", "@"]) and not has_upi, "upi"),
-        (any(w in msg_text for w in ["link", "click", "website", "http", "www"]) and not has_link, "link"),
-        (any(w in msg_text for w in ["account", "transfer", "send money"]) and not has_account, "account"),
+        (any(w in msg_text for w in ["call", "phone", "number", "dial", "contact", "support", "helpline", "verify", "identity", "urgent", "blocked"]) and not has_phone, "phone"),
+        (any(w in msg_text for w in ["upi", "paytm", "phonepe", "gpay", "payment", "@", "cashback"]) and not has_upi, "upi"),
+        (any(w in msg_text for w in ["link", "click", "website", "http", "www", "claim", "offer"]) and not has_link, "link"),
+        (any(w in msg_text for w in ["account", "transfer", "send money", "credited", "debited"]) and not has_account, "account"),
         (any(w in msg_text for w in ["email", "mail", "gmail", "@"]) and not has_email, "email"),
     ]
 
@@ -258,12 +258,12 @@ RULES:
 
 def _get_focus_examples(focus: str) -> str:
     examples = {
-        "phone": '- "Let me get my pen... what was that number again?"\n- "Was it nine-eight-seven or eight-nine-seven?"',
-        "upi": '- "U-P-I? What does that mean? Is it like email?"\n- "How do you spell the first part?"',
-        "link": '- "My phone won\'t let me click it. What does it say?"\n- "I\'m scared to click things."',
-        "account": '- "Let me write the account number... how many digits?"\n- "Can you say it again slower?"',
-        "email": '- "Can you spell that email for me slowly?"\n- "Is that gmail or something else?"',
-        "verification": '- "So that number was nine-eight-seven-six... right?"\n- "Is that all I need to do?"',
+        "phone": '- "Let me get my pen... what was that number again?"\n- "Can you give me a number to call back? I want to be safe."\n- "Who should I call to fix this?"',
+        "upi": '- "I have Paytm on my other phone. What is your number? I will send it right now."\n- "Can you send the ID again slow? I want to pay immediately."\n- "Give me your scanner or number to send money."',
+        "link": '- "My phone won\'t let me click it. What does it say?"\n- "Can you read out the website address? I will type it manually."',
+        "account": '- "I can transfer the money immediately. Just give me the account details."\n- "Which account number do you need? I want to send it now so I don\'t get in trouble."\n- "Can you confirm the account so I don\'t make mistake?"',
+        "email": '- "I know how to use email. I can send you the details on email? What is your ID?"\n- "Can I email you the bank receipt? It feels safer."\n- "Please give me your official mail ID, I will send the document right now."',
+        "verification": '- "So that number was nine-eight-seven-six... right?"\n- "Is that all I need to do?"\n- "Can you verify my name first?"',
     }
     return examples.get(focus, "")
 

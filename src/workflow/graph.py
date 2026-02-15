@@ -326,6 +326,14 @@ async def run_honeypot_workflow(request: HoneypotRequest) -> JudgeResponse:
             conf = _parse_confidence(final_state.get("agentNotes", ""))
             if conf != 0.5:
                 sanitized_notes = f"Detection: SCAM (confidence: {conf:.2f})"
+            
+            # Append extraction count for remote validation
+            intel_count = sum(
+                len(v) for v in final_state["extractedIntelligence"].values()
+                if isinstance(v, list)
+            )
+            if intel_count > 0:
+                sanitized_notes += f" | Extracted: {intel_count} entities"
         else:
             sanitized_notes = "Detection: LEGITIMATE"
 
