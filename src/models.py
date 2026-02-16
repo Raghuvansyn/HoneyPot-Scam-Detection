@@ -37,7 +37,11 @@ class ResponseMeta(BaseModel):
 class JudgeResponse(BaseModel):
     status: str = "success"
     reply: str
-    meta: ResponseMeta
+    scamDetected: bool  # Required field (5 points)
+    extractedIntelligence: ExtractedIntelligence  # Required field (5 points)
+    engagementMetrics: Optional[EngagementMetrics] = None  # Optional field (2.5 points)
+    agentNotes: Optional[str] = None  # Optional field (2.5 points)
+    meta: ResponseMeta  # Keep for internal tracking
 
 
 # --- Callback Models (GUVI Final Output) ---

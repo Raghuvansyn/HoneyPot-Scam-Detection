@@ -8,7 +8,7 @@ from typing import Literal
 from langgraph.graph import StateGraph, END
 from src.models import (
     HoneypotRequest, JudgeResponse, ResponseMeta,
-    ExtractedIntelligence, AgentState,
+    ExtractedIntelligence, AgentState, EngagementMetrics,
 )
 from src.database import SessionManager
 from src.agents.detection import detect_scam
@@ -338,9 +338,20 @@ async def run_honeypot_workflow(request: HoneypotRequest) -> JudgeResponse:
         else:
             sanitized_notes = "Detection: LEGITIMATE"
 
+        # Calculate engagement metrics for response
+        wall_start = final_state.get("wallClockStart", time.time())
+        duration = time.time() - wall_start
+
         return JudgeResponse(
             status="success",
             reply=reply_text,
+            scamDetected=final_state["scamDetected"],  # Required (5 points)
+            extractedIntelligence=ExtractedIntelligence(**final_state["extractedIntelligence"]),  # Required (5 points)
+            engagementMetrics=EngagementMetrics(  # Optional (2.5 points)
+                totalMessagesExchanged=final_state["totalMessages"],
+                engagementDurationSeconds=round(duration, 2)
+            ),
+            agentNotes=sanitized_notes,  # Optional (2.5 points)
             meta=ResponseMeta(
                 agentState="completed" if is_complete else "engaging",
                 sessionStatus="closed" if is_complete else "active",
