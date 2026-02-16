@@ -34,16 +34,6 @@ class ResponseMeta(BaseModel):
     agentNotes: str
 
 
-class JudgeResponse(BaseModel):
-    status: str = "success"
-    reply: str
-    scamDetected: bool  # Required field (5 points)
-    extractedIntelligence: ExtractedIntelligence  # Required field (5 points)
-    engagementMetrics: Optional[EngagementMetrics] = None  # Optional field (2.5 points)
-    agentNotes: Optional[str] = None  # Optional field (2.5 points)
-    meta: ResponseMeta  # Keep for internal tracking
-
-
 # --- Callback Models (GUVI Final Output) ---
 
 class ExtractedIntelligence(BaseModel):
@@ -58,6 +48,16 @@ class ExtractedIntelligence(BaseModel):
 class EngagementMetrics(BaseModel):
     totalMessagesExchanged: int = 0
     engagementDurationSeconds: float = 0
+
+
+class JudgeResponse(BaseModel):
+    status: str = "success"
+    reply: str
+    scamDetected: bool  # Required field (5 points)
+    extractedIntelligence: ExtractedIntelligence  # Required field (5 points)
+    engagementMetrics: Optional[EngagementMetrics] = None  # Optional field (2.5 points)
+    agentNotes: Optional[str] = None  # Optional field (2.5 points)
+    meta: ResponseMeta  # Keep for internal tracking
 
 
 class GuviCallback(BaseModel):
