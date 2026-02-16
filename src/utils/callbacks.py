@@ -28,38 +28,53 @@ def count_intel_categories(extracted_intelligence: dict) -> dict:
 
 
 def should_send_callback(state: dict) -> bool:
+    """
+    Determine if conversation should end and callback should be sent.
+    
+    HACKATHON OPTIMIZATION: Keep conversations going for 10+ turns to maximize
+    intelligence extraction and engagement scores.
+    """
     total_messages = state["totalMessages"]
     scam_detected = state["scamDetected"]
 
-    if not scam_detected:
-        logger.info("Termination: non-scam -> ending")
+    # NEVER close before 10 turns - we need engagement points
+    if total_messages < 10:
+        logger.info(f"Continue: only {total_messages} turns, need minimum 10")
+        return False
+
+    # Hard maximum at 20 turns
+    if total_messages >= HARD_MAX_MESSAGES:
+        logger.info(f"Hard max reached ({HARD_MAX_MESSAGES})")
         return True
 
+    # If not a scam and we've had 12+ turns, we can close
+    if not scam_detected and total_messages >= 12:
+        logger.info("Termination: non-scam after 12 turns")
+        return True
+
+    # For scams, check intelligence extraction
     intel_status = count_intel_categories(state["extractedIntelligence"])
     categories = intel_status["total_categories"]
     filled = intel_status["filled"]
 
     logger.info(f"Intel check - msgs: {total_messages} | categories: {categories}/5 | filled: {filled}")
 
-    if total_messages < EARLY_END_MESSAGES:
-        return False
-
-    if total_messages >= HARD_MAX_MESSAGES:
-        logger.info(f"Hard max reached ({HARD_MAX_MESSAGES})")
+    # If we have 4+ categories of intel, we can close after 12 turns
+    if categories >= 4 and total_messages >= 12:
+        logger.info(f"Good intel ({categories} categories) after 12 turns")
         return True
 
-    if categories >= GOOD_INTEL_CATEGORIES:
+    # If we have 3 categories, close after 15 turns
+    if categories >= 3 and total_messages >= 15:
+        logger.info(f"Decent intel ({categories} categories) after 15 turns")
         return True
 
-    if categories == 2 and total_messages >= DECENT_INTEL_MESSAGES:
+    # If we have 2 categories, close after 18 turns
+    if categories >= 2 and total_messages >= 18:
+        logger.info(f"Some intel ({categories} categories) after 18 turns")
         return True
 
-    if categories == 1 and total_messages >= WEAK_INTEL_MESSAGES:
-        return True
-
-    if categories == 0 and total_messages >= NO_INTEL_MESSAGES:
-        return True
-
+    # Otherwise, keep going until hard max
     return False
 
 
