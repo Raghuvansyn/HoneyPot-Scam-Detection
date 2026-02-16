@@ -91,7 +91,8 @@ async def persona_node(state: AgentState) -> AgentState:
 
     try:
         with PerformanceLogger("Persona", logger):
-            current_intelligence = extract_intelligence(state["conversationHistory"])
+            # Use cached intelligence from state instead of re-extracting
+            current_intelligence = state.get("extractedIntelligence", {})
 
             # fast path for turn 1 when not yet flagged as scam
             if len(state["conversationHistory"]) <= 1 and not state.get("scamDetected", False):

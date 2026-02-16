@@ -19,14 +19,14 @@ def get_llm():
 
     if LLM_PROVIDER == "cerebras" and CEREBRAS_API_KEY:
         try:
-            llm = ChatCerebras(model=LLM_MODEL, api_key=CEREBRAS_API_KEY, temperature=0.8, max_tokens=200)
+            llm = ChatCerebras(model=LLM_MODEL, api_key=CEREBRAS_API_KEY, temperature=0.8, max_tokens=150)
             logger.info(f"[llm] using Cerebras ({LLM_MODEL})")
             return llm
         except Exception as e:
             logger.warning(f"[llm] Cerebras init failed: {e}")
 
     logger.info(f"[llm] using Groq fallback ({FALLBACK_MODEL}) | groq_key_set={bool(GROQ_API_KEY and GROQ_API_KEY != 'temp-key')}")
-    return ChatGroq(model=FALLBACK_MODEL, api_key=GROQ_API_KEY, temperature=0.8, max_tokens=200)
+    return ChatGroq(model=FALLBACK_MODEL, api_key=GROQ_API_KEY, temperature=0.8, max_tokens=150)
 
 
 JAILBREAK_TRIGGERS = [
@@ -55,9 +55,12 @@ async def generate_persona_response(
 
         llm = get_llm()
 
+        # Truncate conversation history to last 8 messages (4 exchanges) to reduce context size
+        truncated_history = conversation_history[-8:] if len(conversation_history) > 8 else conversation_history
+        
         conversation_text = "\n".join(
             f"{'Caller' if msg.get('sender') == 'scammer' else 'You'}: {msg.get('text')}"
-            for msg in conversation_history
+            for msg in truncated_history
         )
 
         context_strategy = determine_context_strategy(conversation_history, extracted_intelligence)
@@ -87,10 +90,10 @@ Your response:"""
         messages = [SystemMessage(content=system_prompt), HumanMessage(content=user_prompt)]
 
         try:
-            response = await asyncio.wait_for(llm.ainvoke(messages), timeout=12.0)
+            response = await asyncio.wait_for(llm.ainvoke(messages), timeout=10.0)
             logger.info(f"[persona] LLM response received ({len(response.content)} chars)")
         except asyncio.TimeoutError:
-            logger.error("[persona] LLM timeout (12s) - using fallback")
+            logger.error("[persona] LLM timeout (10s) - using fallback")
             return get_fallback_response(conversation_history)
         except Exception as llm_err:
             logger.error(f"[persona] LLM call failed: {type(llm_err).__name__}: {llm_err}")

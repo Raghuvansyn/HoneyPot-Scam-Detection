@@ -352,24 +352,15 @@ async def detect_scam(text: str, session_id: str = "unknown") -> tuple[bool, flo
         logger.critical(f"[detection] DIGITAL ARREST: {text[:60]}")
         track_digital_arrest_attempt(da_assessment)
         guidance = generate_emergency_guidance(da_assessment)
-        try:
-            intelligence = extract_intelligence([{"sender": "scammer", "text": text}])
-            lea_alert = alert_law_enforcement(
-                session_id=session_id, message=text,
-                threat_assessment=da_assessment, intelligence=intelligence,
-            )
-            lea_sent = True
-        except Exception as e:
-            logger.error(f"[detection] LEA alert failed: {e}")
-            lea_sent = False
-            lea_alert = {}
-
+        # Note: Intelligence extraction will happen in the extraction node
+        # LEA alert will be sent from save_session_node with full intelligence
+        
         return True, da_assessment["confidence"], {
             "source": "digital_arrest_prevention",
             "is_digital_arrest": True,
             "severity": da_assessment["severity"],
             "victim_guidance": guidance,
-            "lea_alert_sent": lea_sent,
+            "lea_alert_sent": False,  # Will be sent later with full intelligence
             **da_assessment,
         }
 
@@ -397,10 +388,10 @@ async def detect_scam(text: str, session_id: str = "unknown") -> tuple[bool, flo
     ml_result = await run_in_threadpool(ml_classify, text)
     logger.info(f"[detection] ML: scam={ml_result['is_scam']} conf={ml_result['confidence']}")
 
-    if ml_result["is_scam"] and ml_result["confidence"] >= 0.7:
+    if ml_result["is_scam"] and ml_result["confidence"] >= 0.6:
         return True, ml_result["confidence"], {"source": "ml"}
 
-    if not ml_result["is_scam"] and ml_result["confidence"] >= 0.8:
+    if not ml_result["is_scam"] and ml_result["confidence"] >= 0.7:
         return False, 0.1, {"source": "ml"}
 
     # LLM fallback
