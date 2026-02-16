@@ -89,3 +89,4 @@ class AgentState(TypedDict):
     callbackSent: bool
     digitalArrestInfo: Optional[Dict]
     detectionConfidence: Optional[float]
+    scamType: Optional[str]  # bank_fraud, upi_fraud, phishing, etc.

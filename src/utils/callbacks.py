@@ -31,25 +31,15 @@ def should_send_callback(state: dict) -> bool:
     """
     Determine if conversation should end and callback should be sent.
     
-    HACKATHON OPTIMIZATION: Keep conversations going for 10+ turns to maximize
-    intelligence extraction and engagement scores.
+    HACKATHON OPTIMIZATION: Align with maxTurns=10 from evaluator.
+    Keep conversations going for 8-10 turns to maximize engagement and intelligence scores.
     """
     total_messages = state["totalMessages"]
     scam_detected = state["scamDetected"]
 
-    # NEVER close before 10 turns - we need engagement points
-    if total_messages < 10:
-        logger.info(f"Continue: only {total_messages} turns, need minimum 10")
-        return False
-
-    # Hard maximum at 20 turns
+    # Hard maximum at 20 turns (safety limit)
     if total_messages >= HARD_MAX_MESSAGES:
         logger.info(f"Hard max reached ({HARD_MAX_MESSAGES})")
-        return True
-
-    # If not a scam and we've had 12+ turns, we can close
-    if not scam_detected and total_messages >= 12:
-        logger.info("Termination: non-scam after 12 turns")
         return True
 
     # For scams, check intelligence extraction
@@ -59,19 +49,38 @@ def should_send_callback(state: dict) -> bool:
 
     logger.info(f"Intel check - msgs: {total_messages} | categories: {categories}/5 | filled: {filled}")
 
-    # If we have 4+ categories of intel, we can close after 12 turns
-    if categories >= 4 and total_messages >= 12:
+    # Minimum engagement threshold: 8 turns (ensures we get engagement points)
+    # Engagement scoring: 5 pts for >0 msgs, 5 pts for >=5 msgs
+    MIN_ENGAGEMENT_TURNS = 8
+
+    if total_messages < MIN_ENGAGEMENT_TURNS:
+        logger.info(f"Continue: only {total_messages} turns, need minimum {MIN_ENGAGEMENT_TURNS} for engagement")
+        return False
+
+    # If not a scam and we've had 10+ turns, we can close
+    if not scam_detected and total_messages >= 10:
+        logger.info("Termination: non-scam after 10 turns")
+        return True
+
+    # INTELLIGENCE-BASED TERMINATION (for scams)
+    # If we have excellent intel (4+ categories), close after 10 turns
+    if categories >= 4 and total_messages >= 10:
+        logger.info(f"Excellent intel ({categories} categories) after 10 turns")
+        return True
+
+    # If we have good intel (3 categories), close after 12 turns
+    if categories >= 3 and total_messages >= 12:
         logger.info(f"Good intel ({categories} categories) after 12 turns")
         return True
 
-    # If we have 3 categories, close after 15 turns
-    if categories >= 3 and total_messages >= 15:
+    # If we have decent intel (2 categories), close after 15 turns
+    if categories >= 2 and total_messages >= 15:
         logger.info(f"Decent intel ({categories} categories) after 15 turns")
         return True
 
-    # If we have 2 categories, close after 18 turns
-    if categories >= 2 and total_messages >= 18:
-        logger.info(f"Some intel ({categories} categories) after 18 turns")
+    # If we have minimal intel (1 category), close after 18 turns
+    if categories >= 1 and total_messages >= 18:
+        logger.info(f"Minimal intel ({categories} categories) after 18 turns")
         return True
 
     # Otherwise, keep going until hard max

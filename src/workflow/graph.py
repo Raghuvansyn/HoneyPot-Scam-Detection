@@ -56,12 +56,13 @@ async def detection_node(state: AgentState) -> AgentState:
 
     with PerformanceLogger("Detection", logger):
         last_message = state["conversationHistory"][-1]["text"]
-        is_scam, confidence, details = await detect_scam(last_message, session_id=session_id)
+        is_scam, confidence, details, scam_type = await detect_scam(last_message, session_id=session_id)
         state["detectionConfidence"] = confidence
+        state["scamType"] = scam_type  # Store for persona agent
 
         if is_scam:
             state["scamDetected"] = True
-            state["agentNotes"] = f"Detection: SCAM (confidence: {confidence:.2f})"
+            state["agentNotes"] = f"Detection: SCAM (confidence: {confidence:.2f}, type: {scam_type})"
 
             if details.get("is_digital_arrest"):
                 state["digitalArrestInfo"] = details
@@ -72,7 +73,7 @@ async def detection_node(state: AgentState) -> AgentState:
                         intelligence=state["extractedIntelligence"], confidence=confidence,
                     )
 
-            logger.info(f"[detection] SCAM conf={confidence:.2f}")
+            logger.info(f"[detection] SCAM conf={confidence:.2f} type={scam_type}")
         else:
             if not state.get("scamDetected", False):
                 state["agentNotes"] = f"Detection: SAFE (confidence: {confidence:.2f})"
@@ -93,25 +94,15 @@ async def persona_node(state: AgentState) -> AgentState:
         with PerformanceLogger("Persona", logger):
             # Use cached intelligence from state instead of re-extracting
             current_intelligence = state.get("extractedIntelligence", {})
+            scam_type = state.get("scamType", "generic")
 
-            # fast path for turn 1 when not yet flagged as scam
-            if len(state["conversationHistory"]) <= 1 and not state.get("scamDetected", False):
-                import random
-                fast_replies = [
-                    "Who is this?",
-                    "I don't verify numbers I don't know.",
-                    "Hello? Who are you?",
-                    "What is this about? I am busy.",
-                    "I don't understand message.",
-                ]
-                raw_response = random.choice(fast_replies)
-                logger.info(f"[persona] fast path: '{raw_response}'")
-            else:
-                raw_response = await generate_persona_response(
-                    conversation_history=state["conversationHistory"],
-                    metadata=state["metadata"],
-                    extracted_intelligence=current_intelligence,
-                )
+            # Always use LLM for natural, targeted responses (no fast-path)
+            raw_response = await generate_persona_response(
+                conversation_history=state["conversationHistory"],
+                metadata=state["metadata"],
+                extracted_intelligence=current_intelligence,
+                scam_type=scam_type,
+            )
 
             persona_response, was_filtered = validate_persona_output(raw_response)
             if was_filtered:

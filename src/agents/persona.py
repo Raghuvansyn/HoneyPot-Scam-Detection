@@ -43,8 +43,38 @@ def is_jailbreak_attempt(text: str) -> bool:
     return any(re.search(pat, tl) for pat in JAILBREAK_TRIGGERS)
 
 
+# Targeted question templates for intelligence extraction
+TARGETED_QUESTIONS = {
+    "phoneNumbers": [
+        "What number should I call you back on?",
+        "Can you give me your helpline number?",
+        "Let me write down your contact number...",
+        "What's your phone number so I can call if there's a problem?",
+    ],
+    "bankAccounts": [
+        "Which account should I transfer to?",
+        "Can you confirm the account number?",
+        "I need the full account details to send money",
+        "What is the account number? I want to make sure I send it correctly",
+    ],
+    "emailAddresses": [
+        "What is your official email ID?",
+        "Can I email you the documents?",
+        "Send me your email so I can forward the receipt",
+        "What's your email address for verification?",
+    ],
+    "upiIds": [
+        "What is your UPI ID?",
+        "Should I pay via Paytm or PhonePe?",
+        "Give me the payment ID to send money",
+        "I have Google Pay. What's your UPI address?",
+    ],
+}
+
+
 async def generate_persona_response(
     conversation_history: list, metadata: dict, extracted_intelligence: dict = None,
+    scam_type: str = None,
 ) -> str:
     try:
         last_msg_text = get_last_scammer_message(conversation_history) or ""
@@ -63,8 +93,8 @@ async def generate_persona_response(
             for msg in truncated_history
         )
 
-        context_strategy = determine_context_strategy(conversation_history, extracted_intelligence)
-        logger.info(f"[persona] strategy={context_strategy['mode']}")
+        context_strategy = determine_context_strategy(conversation_history, extracted_intelligence, scam_type)
+        logger.info(f"[persona] strategy={context_strategy['mode']} focus={context_strategy.get('focus')}")
 
         system_prompt = build_system_prompt(context_strategy, conversation_history)
 
@@ -118,7 +148,8 @@ def _detect_language(text: str, metadata: dict) -> str:
     return "ENGLISH"
 
 
-def determine_context_strategy(conversation_history: list, extracted_intelligence: dict) -> dict:
+def determine_context_strategy(conversation_history: list, extracted_intelligence: dict, scam_type: str = None) -> dict:
+    """Determine conversation strategy based on extracted intelligence and scam type."""
     if not extracted_intelligence:
         extracted_intelligence = {"phoneNumbers": [], "upiIds": [], "phishingLinks": [], "bankAccounts": [], "emailAddresses": []}
 
@@ -129,48 +160,61 @@ def determine_context_strategy(conversation_history: list, extracted_intelligenc
     has_email = len(extracted_intelligence.get("emailAddresses", [])) > 0
     total_evidence = sum([has_phone, has_upi, has_link, has_account, has_email])
 
-    if total_evidence < 1:
-        return {
-            "mode": "generic_confusion", "focus": None,
-            "hints": [
-                "Act very confused about technology",
-                "Ask them to explain slowly because you are old",
-                "Mention your grandson usually handles this",
-                "Do NOT give any info, make THEM talk",
-            ],
-        }
+    # Identify missing categories
+    missing = []
+    if not has_phone: missing.append("phoneNumbers")
+    if not has_account: missing.append("bankAccounts")
+    if not has_upi: missing.append("upiIds")
+    if not has_email: missing.append("emailAddresses")
+    if not has_link: missing.append("phishingLinks")
 
-    if total_evidence >= 2:
-        return {
-            "mode": "active_reference", "focus": "verification",
-            "hints": [
-                "Repeat details back to them to verify",
-                "Act submissive and ready to comply",
-                "Ask 'Is that all I need to do?'",
-            ],
-        }
-
-    last_msg = get_last_scammer_message(conversation_history)
-    if not last_msg:
-        return {"mode": "generic_confusion", "focus": None, "hints": []}
-
-    msg_text = last_msg.lower()
-
+    # If we have 3+ categories, verify and prepare to close
     if total_evidence >= 3:
-        return {"mode": "generic_confusion", "focus": None, "hints": ["Already have enough evidence, be vague"]}
+        return {
+            "mode": "verification", "focus": None,
+            "hints": [
+                "Repeat details back to verify",
+                "Act ready to comply",
+                "Ask if that's all you need",
+            ],
+        }
 
-    focus_map = [
-        (any(w in msg_text for w in ["call", "phone", "number", "dial", "contact", "support", "helpline", "verify", "identity", "urgent", "blocked"]) and not has_phone, "phone"),
-        (any(w in msg_text for w in ["upi", "paytm", "phonepe", "gpay", "payment", "@", "cashback"]) and not has_upi, "upi"),
-        (any(w in msg_text for w in ["link", "click", "website", "http", "www", "claim", "offer"]) and not has_link, "link"),
-        (any(w in msg_text for w in ["account", "transfer", "send money", "credited", "debited"]) and not has_account, "account"),
-        (any(w in msg_text for w in ["email", "mail", "gmail", "@"]) and not has_email, "email"),
-    ]
+    # If we have 0 intel, start with generic confusion
+    if total_evidence == 0:
+        # But prioritize based on scam type
+        if scam_type == "bank_fraud" and "phoneNumbers" in missing:
+            return {"mode": "extract_specific", "focus": "phoneNumbers", "hints": ["Ask for callback number"]}
+        elif scam_type == "upi_fraud" and "upiIds" in missing:
+            return {"mode": "extract_specific", "focus": "upiIds", "hints": ["Ask for UPI ID"]}
+        elif scam_type == "phishing" and "phishingLinks" in missing:
+            return {"mode": "extract_specific", "focus": "phishingLinks", "hints": ["Ask about the link"]}
+        else:
+            return {
+                "mode": "generic_confusion", "focus": None,
+                "hints": [
+                    "Act confused about technology",
+                    "Ask them to explain slowly",
+                    "Make THEM talk and share details",
+                ],
+            }
 
-    for condition, focus in focus_map:
-        if condition:
-            return {"mode": "active_reference", "focus": focus, "hints": [f"Extract {focus} information"]}
+    # If we have 1-2 categories, target the next missing one
+    # Prioritize based on scam type
+    if scam_type == "bank_fraud":
+        priority = ["phoneNumbers", "bankAccounts", "emailAddresses", "upiIds"]
+    elif scam_type == "upi_fraud":
+        priority = ["upiIds", "phoneNumbers", "emailAddresses", "bankAccounts"]
+    elif scam_type == "phishing":
+        priority = ["phishingLinks", "emailAddresses", "phoneNumbers", "upiIds"]
+    else:
+        priority = ["phoneNumbers", "upiIds", "bankAccounts", "emailAddresses", "phishingLinks"]
 
+    # Find first missing category in priority order
+    for category in priority:
+        if category in missing:
+            return {"mode": "extract_specific", "focus": category, "hints": [f"Extract {category}"]}
+
+    # Fallback: probe for more
     return {"mode": "probe_for_more", "focus": None, "hints": ["Ask worried open-ended questions"]}
 
 
@@ -249,10 +293,12 @@ RULES:
     mode = context_strategy["mode"]
     hints = "\n".join(f"- {h}" for h in context_strategy.get("hints", []))
 
-    if mode == "active_reference":
+    if mode == "extract_specific":
         focus = context_strategy.get("focus", "information")
         examples = _get_focus_examples(focus)
-        return base + f"\n\nSTRATEGY: EXTRACT {focus.upper()} INFORMATION\n{hints}\n{examples}"
+        return base + f"\n\nSTRATEGY: EXTRACT {focus.upper()}\n{hints}\n{examples}\n\nYour goal: Ask a question that will make them share their {focus}."
+    elif mode == "verification":
+        return base + f"\n\nSTRATEGY: VERIFICATION\n{hints}\nExamples:\n- So that number was nine-eight-seven-six... right?\n- Is that all I need to do?\n- Let me confirm the details..."
     elif mode == "generic_confusion":
         return base + f"\n\nSTRATEGY: GENERIC CONFUSION\n{hints}\nExamples:\n- I'm getting very confused.\n- My son usually helps me with these things.\n- Can this wait until tomorrow?"
     else:
@@ -260,12 +306,13 @@ RULES:
 
 
 def _get_focus_examples(focus: str) -> str:
+    """Get example questions for specific intelligence categories."""
     examples = {
-        "phone": '- "Let me get my pen... what was that number again?"\n- "Can you give me a number to call back? I want to be safe."\n- "Who should I call to fix this?"',
-        "upi": '- "I have Paytm on my other phone. What is your number? I will send it right now."\n- "Can you send the ID again slow? I want to pay immediately."\n- "Give me your scanner or number to send money."',
-        "link": '- "My phone won\'t let me click it. What does it say?"\n- "Can you read out the website address? I will type it manually."',
-        "account": '- "I can transfer the money immediately. Just give me the account details."\n- "Which account number do you need? I want to send it now so I don\'t get in trouble."\n- "Can you confirm the account so I don\'t make mistake?"',
-        "email": '- "I know how to use email. I can send you the details on email? What is your ID?"\n- "Can I email you the bank receipt? It feels safer."\n- "Please give me your official mail ID, I will send the document right now."',
+        "phoneNumbers": '- "Let me get my pen... what was that number again?"\n- "Can you give me a number to call back? I want to be safe."\n- "Who should I call to fix this?"\n- "What\'s your contact number?"',
+        "upiIds": '- "I have Paytm on my other phone. What is your UPI ID?"\n- "Can you send the payment ID again? I want to pay immediately."\n- "Give me your UPI address to send money."\n- "Should I use PhonePe or Google Pay? What\'s your ID?"',
+        "phishingLinks": '- "My phone won\'t let me click it. What does the link say?"\n- "Can you read out the website address? I will type it manually."\n- "I can\'t open links. Tell me the website name."',
+        "bankAccounts": '- "I can transfer the money immediately. Just give me the account details."\n- "Which account number do you need? I want to send it now."\n- "Can you confirm the account number so I don\'t make a mistake?"\n- "What\'s the full account number?"',
+        "emailAddresses": '- "I know how to use email. What is your email ID?"\n- "Can I email you the bank receipt? It feels safer."\n- "Please give me your official email address."\n- "What\'s your email so I can send the documents?"',
         "verification": '- "So that number was nine-eight-seven-six... right?"\n- "Is that all I need to do?"\n- "Can you verify my name first?"',
     }
     return examples.get(focus, "")

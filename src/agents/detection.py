@@ -84,6 +84,46 @@ def is_jailbreak_attempt(text: str) -> bool:
     return any(re.search(pat, tl) for pat in JAILBREAK_TRIGGERS)
 
 
+def classify_scam_type(text: str) -> str:
+    """
+    Classify scam into specific types for targeted intelligence extraction.
+    Returns: bank_fraud, upi_fraud, phishing, investment, lottery, or generic
+    """
+    text_lower = text.lower()
+    
+    # Bank fraud indicators (account blocked, KYC, OTP verification)
+    bank_keywords = ["bank account", "account blocked", "account suspend", "kyc", 
+                     "verify account", "sbi", "hdfc", "icici", "axis bank"]
+    if any(kw in text_lower for kw in bank_keywords):
+        return "bank_fraud"
+    
+    # UPI fraud indicators (payment apps, cashback, UPI IDs)
+    upi_keywords = ["upi", "paytm", "phonepe", "gpay", "google pay", 
+                    "cashback", "refund", "@paytm", "@okaxis"]
+    if any(kw in text_lower for kw in upi_keywords):
+        return "upi_fraud"
+    
+    # Phishing indicators (links, prizes, offers)
+    phishing_keywords = ["click here", "http", "www.", "link", "claim", 
+                         "prize", "winner", "lottery", "offer expires"]
+    if any(kw in text_lower for kw in phishing_keywords):
+        return "phishing"
+    
+    # Investment scam indicators
+    investment_keywords = ["invest", "trading", "crypto", "bitcoin", "profit", 
+                          "returns", "stock market", "forex"]
+    if any(kw in text_lower for kw in investment_keywords):
+        return "investment"
+    
+    # Job/part-time scam indicators
+    job_keywords = ["part-time", "work from home", "daily income", "earn money", 
+                    "job offer", "like youtube videos"]
+    if any(kw in text_lower for kw in job_keywords):
+        return "job_scam"
+    
+    return "generic"
+
+
 def rule_based_score(text: str) -> dict:
     text_lower = text.lower()
 
@@ -326,7 +366,7 @@ from src.agents.digital_arrest import (
 from src.agents.extraction import extract_intelligence
 
 
-async def detect_scam(text: str, session_id: str = "unknown") -> tuple[bool, float, dict]:
+async def detect_scam(text: str, session_id: str = "unknown") -> tuple[bool, float, dict, str]:
     """
     Cascading detection:
     0. Jailbreak guard
@@ -335,16 +375,21 @@ async def detect_scam(text: str, session_id: str = "unknown") -> tuple[bool, flo
     3. Rule-based scoring
     4. ML classifier
     5. LLM fallback
+    
+    Returns: (is_scam, confidence, details, scam_type)
     """
 
     if is_jailbreak_attempt(text):
         logger.warning(f"[detection] jailbreak attempt: {text[:60]}")
-        return True, 0.99, {"is_jailbreak": True}
+        return True, 0.99, {"is_jailbreak": True}, "jailbreak"
 
     original_text = text
     text = normalize_text(text)
     if text != original_text:
         logger.info(f"[detection] normalized: '{original_text[:30]}' -> '{text[:30]}'")
+
+    # Classify scam type early for context
+    scam_type = classify_scam_type(text)
 
     # digital arrest check (tightened — multi-word phrases only)
     da_assessment = detect_digital_arrest(text)
@@ -362,12 +407,12 @@ async def detect_scam(text: str, session_id: str = "unknown") -> tuple[bool, flo
             "victim_guidance": guidance,
             "lea_alert_sent": False,  # Will be sent later with full intelligence
             **da_assessment,
-        }
+        }, "digital_arrest"
 
     # rule-based
     rule_result = rule_based_score(text)
     if rule_result.get("whitelisted", False):
-        return False, 0.0, {}
+        return False, 0.0, {}, "legitimate"
 
     if rule_result["rule_score"] >= 0.15:
         # Map rule score (0.4, 0.8, 1.0) to confidence
@@ -381,7 +426,7 @@ async def detect_scam(text: str, session_id: str = "unknown") -> tuple[bool, flo
             confidence = 0.90
             
         logger.info(f"[detection] SCAM by rules (score={rule_result['rule_score']} -> conf={confidence})")
-        return True, confidence, {"keywords": rule_result["matched_keywords"]}
+        return True, confidence, {"keywords": rule_result["matched_keywords"]}, scam_type
 
     # ML
     from fastapi.concurrency import run_in_threadpool
@@ -389,12 +434,12 @@ async def detect_scam(text: str, session_id: str = "unknown") -> tuple[bool, flo
     logger.info(f"[detection] ML: scam={ml_result['is_scam']} conf={ml_result['confidence']}")
 
     if ml_result["is_scam"] and ml_result["confidence"] >= 0.6:
-        return True, ml_result["confidence"], {"source": "ml"}
+        return True, ml_result["confidence"], {"source": "ml"}, scam_type
 
     if not ml_result["is_scam"] and ml_result["confidence"] >= 0.7:
-        return False, 0.1, {"source": "ml"}
+        return False, 0.1, {"source": "ml"}, "legitimate"
 
     # LLM fallback
     logger.info("[detection] inconclusive -> LLM fallback")
     is_scam, confidence = await llm_fallback_check(text)
-    return is_scam, confidence, {"source": "llm"}
+    return is_scam, confidence, {"source": "llm"}, scam_type if is_scam else "legitimate"
