@@ -7,10 +7,10 @@ from src.utils.logger import logger
 GUVI_CALLBACK_URL = "https://hackathon.guvi.in/api/updateHoneyPotFinalResult"
 
 HARD_MAX_MESSAGES = 20
-EARLY_END_MESSAGES = 5
-GOOD_INTEL_CATEGORIES = 3
-DECENT_INTEL_MESSAGES = 6
-WEAK_INTEL_MESSAGES = 12
+EARLY_END_MESSAGES = 8  # Increased from 5 to allow more engagement
+GOOD_INTEL_CATEGORIES = 4  # Increased from 3 to require more intel before closing
+DECENT_INTEL_MESSAGES = 10  # Increased from 6 to keep conversation going
+WEAK_INTEL_MESSAGES = 15  # Increased from 12 to extract more data
 NO_INTEL_MESSAGES = 12
 
 
