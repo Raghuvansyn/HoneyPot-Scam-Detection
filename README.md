@@ -302,7 +302,7 @@ http://localhost:8002/docs
 
 ## Team
 
-Team Kaizen
+Ankit Singh Raghuvanshi
 ---
 
 ## License
