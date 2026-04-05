@@ -8,7 +8,7 @@ Built for the **GUVI Hackathon 2026**.
 |---|---|
 | **Deployed URL** | `https://scambait-ai-production.up.railway.app/api/v1/honeypot` |
 | **API Key** | `GUVI-Hackathon-2026-ScamBait-xK9mP2vL7qR3wT8` |
-| **GitHub** | [github.com/diyaavirmani/HoneyPot-Scam-Detection](https://github.com/diyaavirmani/HoneyPot-Scam-Detection) |
+| **GitHub** | [github.com/diyaavirmani/HoneyPot-Scam-Detection]((https://github.com/Raghuvansyn/HoneyPot-Scam-Detection)) |
 
 ---
 
