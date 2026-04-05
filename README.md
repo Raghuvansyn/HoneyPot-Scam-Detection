@@ -8,7 +8,7 @@ Built for the **GUVI Hackathon 2026**.
 |---|---|
 | **Deployed URL** | `https://scambait-ai-production.up.railway.app/api/v1/honeypot` |
 | **API Key** | `GUVI-Hackathon-2026-ScamBait-xK9mP2vL7qR3wT8` |
-| **GitHub** | *GitHub* | [github.com/Raghuvansyn/HoneyPot-Scam-Detection](https://github.com/Raghuvansyn/HoneyPot-Scam-Detection) |
+| *GitHub* | [github.com/Raghuvansyn/HoneyPot-Scam-Detection](https://github.com/Raghuvansyn/HoneyPot-Scam-Detection) |
 ---
 
 ## Description
@@ -301,7 +301,7 @@ http://localhost:8002/docs
 
 ## Team
 
-Ankit Singh Raghuvanshi
+### Ankit Singh Raghuvanshi
 ---
 
 ## License
