@@ -29,7 +29,10 @@ def normalize_before_extract(text: str) -> str:
 
 
 def extract_intelligence(conversation_history: list) -> dict:
-    all_text = " ".join(msg.get("text", "") for msg in conversation_history)
+    # Evidence comes only from incoming messages. Generated replies are not
+    # independent observations, even after output sanitization.
+    all_text = " ".join(msg.get("text", "") for msg in conversation_history
+                        if msg.get("sender") == "scammer")
     normalized = normalize_before_extract(all_text)
 
     phone_numbers = list(set(

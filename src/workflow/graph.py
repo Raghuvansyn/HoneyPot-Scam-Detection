@@ -192,11 +192,10 @@ async def save_session_node(state: AgentState) -> AgentState:
 
 
 def _parse_confidence(agent_notes: str) -> float:
-    if "confidence:" in agent_notes:
-        try:
-            return float(agent_notes.split("confidence:")[1].split(")")[0].strip())
-        except (ValueError, IndexError):
-            pass
+    import re
+    match = re.search(r"confidence:\s*(\d+(?:\.\d+)?)", agent_notes)
+    if match:
+        return float(match.group(1))
     return 0.5
 
 
@@ -257,7 +256,7 @@ WORKFLOW_GRAPH = create_workflow_graph()
 async def run_honeypot_workflow(request: HoneypotRequest) -> JudgeResponse:
     session_id = request.sessionId
     scammer_message = request.message
-    metadata = request.metadata.dict() if request.metadata else {}
+    metadata = request.metadata.model_dump() if request.metadata else {}
 
     logger.info(f"[workflow] start | session={session_id} | msg='{scammer_message.text[:80]}'")
 

@@ -5,6 +5,7 @@ SQLite session store with WAL mode for concurrent access.
 import json
 import sqlite3
 import threading
+import os
 from typing import Optional, Dict
 from src.config import DATABASE_PATH
 
@@ -12,15 +13,18 @@ _local = threading.local()
 
 
 def get_connection(db_path: str) -> sqlite3.Connection:
-    if not hasattr(_local, 'conn') or _local.conn is None:
+    db_path = os.path.abspath(db_path)
+    if not hasattr(_local, 'connections'):
+        _local.connections = {}
+    if db_path not in _local.connections:
         conn = sqlite3.connect(db_path, check_same_thread=False, timeout=30)
         conn.execute('PRAGMA journal_mode=WAL;')
         conn.execute('PRAGMA synchronous=NORMAL;')
         conn.execute('PRAGMA cache_size=10000;')
         conn.execute('PRAGMA temp_store=memory;')
         conn.row_factory = sqlite3.Row
-        _local.conn = conn
-    return _local.conn
+        _local.connections[db_path] = conn
+    return _local.connections[db_path]
 
 
 class SessionManager:
@@ -58,33 +62,32 @@ class SessionManager:
                     import time
                     time.sleep(0.05 * (attempt + 1))
                     continue
-                return None
+                raise
 
     def save_session(self, session_id: str, state: Dict):
         for attempt in range(3):
             try:
                 conn = get_connection(self.db_path)
                 state_json = json.dumps(state, default=str)
-                conn.execute('''
-                    INSERT INTO sessions (session_id, state_json, updated_at)
-                    VALUES (?, ?, CURRENT_TIMESTAMP)
-                    ON CONFLICT(session_id)
-                    DO UPDATE SET state_json = excluded.state_json, updated_at = CURRENT_TIMESTAMP
-                ''', (session_id, state_json))
-                conn.commit()
+                with conn:
+                    conn.execute('''
+                        INSERT INTO sessions (session_id, state_json, updated_at)
+                        VALUES (?, ?, CURRENT_TIMESTAMP)
+                        ON CONFLICT(session_id)
+                        DO UPDATE SET state_json = excluded.state_json, updated_at = CURRENT_TIMESTAMP
+                    ''', (session_id, state_json))
                 return
             except sqlite3.OperationalError as e:
                 if "locked" in str(e).lower() and attempt < 2:
                     import time
                     time.sleep(0.05 * (attempt + 1))
                     continue
-                return
+                raise
 
     def delete_session(self, session_id: str):
+        conn = sqlite3.connect(self.db_path, timeout=30)
         try:
-            conn = sqlite3.connect(self.db_path, timeout=30)
-            conn.execute("DELETE FROM sessions WHERE session_id = ?", (session_id,))
-            conn.commit()
+            with conn:
+                conn.execute("DELETE FROM sessions WHERE session_id = ?", (session_id,))
+        finally:
             conn.close()
-        except Exception:
-            pass

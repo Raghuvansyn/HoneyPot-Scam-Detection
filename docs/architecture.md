@@ -1,185 +1,56 @@
-# Architecture
+# Architecture and tradeoffs
 
-## System Overview
+ScamBait is a FastAPI application backed by a six-node LangGraph state machine and SQLite. See [the README](../README.md) for installation, a synthetic example, and offline verification.
 
-ScamBait AI is a multi-agent honeypot system built on FastAPI and orchestrated via LangGraph. The system receives incoming scam messages through a REST API, detects whether they are scams, engages the scammer using an AI-powered persona, extracts actionable intelligence, and reports findings to a law enforcement callback endpoint.
+## Actual request flow
 
----
+1. `src/main.py` validates `HoneypotRequest`, checks a configured shared API key, acquires the process semaphore and a lock for the session. Lock entries count queued users and are removed only when no request still uses them.
+2. `load_session_node` in `src/workflow/graph.py` loads SQLite JSON state, appends the new incoming message, and advances the combined message count. Client-supplied history is not imported.
+3. A previously flagged scam bypasses detection. Otherwise `detect_scam` checks prompt-manipulation patterns, spaced-letter normalization, digital-arrest patterns, rule scores, the lazily trained TF-IDF/LinearSVC model, then the LLM when inconclusive. Provider JSON verdicts and score ranges are validated. Failure is an error, not a safe classification.
+4. A scam gets a persona reply. An untrusted, initially safe result can also receive a probing reply while the combined message count is at most three. Other safe messages get a fixed polite response. Trusted templates only bypass the rule stage when no explicit dangerous-action verb is present; message text is not sender authentication.
+5. Persona generation sends the last eight messages and a strategy prompt to one configured provider. A generation failure can return scripted text. A limited regex filter removes sensitive-looking output. Extraction then reads only incoming messages labelled `scammer`; generated replies are never evidence.
+6. `save_session_node` checks the combined count and extracted categories, optionally performs a callback/dry run, and persists JSON. The API builds a validated response. Workflow exceptions return 503; the 35-second workflow deadline returns 504. Semaphore/lock queue time is outside that deadline.
 
-## High-Level Flow
+## Stopping conditions
 
-```
-Client (Evaluator / Scammer)
-        |
-        |  POST /honeypot
-        v
-+-------------------+
-|   FastAPI Server   |
-|  (main.py)         |
-|  - Auth (x-api-key)|
-|  - Semaphore (30)  |
-|  - Session Locks   |
-|  - 35s Timeout     |
-+--------+----------+
-         |
-         v
-+-------------------+
-|  LangGraph         |
-|  Workflow Engine    |
-|  (workflow/graph.py)|
-+--------+----------+
-         |
-         |  1. load_session
-         |  2. detection (conditional)
-         |  3. persona  OR  not_scam
-         |  4. extraction
-         |  5. save_session
-         |
-         v
-+-------------------+
-|  Response to       |
-|  Client            |
-+-------------------+
-```
+These thresholds count **incoming messages plus replies**, not user turns:
 
----
+| Condition | Close when count reaches |
+|---|---:|
+| Any session |20|
+| Not marked scam |10|
+| At least 4 contact/payment categories |10|
+| At least 3 categories |12|
+| At least 2 categories |15|
+| At least 1 category |18|
 
-## Agent Modules
+Counts below 8 continue. With zero categories, a scam continues to the hard 20-message limit. Suspicious keywords do not count as contact/payment categories. A successful callback marks `callbackSent`; a dev dry run also returns success. A failed production callback still closes the session. Reusing a closed session can append more messages; there is no immutable closed-session API or retry queue yet.
 
-### 1. Detection Agent (`agents/detection.py`)
+## Important files
 
-Cascading pipeline that runs fast checks first and expensive checks only when needed:
+| Path | Responsibility |
+|---|---|
+| `src/models.py` | Request/response/state shapes and bounded identifiers/input |
+| `src/config.py` | Environment and provider configuration |
+| `src/main.py` | API, auth, timeout, concurrency controls, error responses |
+| `src/workflow/graph.py` | Nodes, conditional routing, persistence and response construction |
+| `src/database.py` | WAL SQLite JSON store; thread-local connections keyed by database path |
+| `src/agents/detection.py` | Rules, 115 embedded training strings, TF-IDF/SVM, validated LLM fallback |
+| `src/agents/persona.py` | Prompt strategy, provider selection, language heuristics, scripted fallback |
+| `src/agents/extraction.py` | Regex candidate extraction and text normalization |
+| `src/agents/hallucination_filter.py` | Limited sensitive-pattern replacement |
+| `src/agents/timeline.py` | Heuristic narrative summary and confidence aggregation |
+| `src/utils/callbacks.py` | Actual stopping rules, GUVI callback, local digital-arrest log |
+| `tests/offline/test_reliability.py` | No-network regression and full graph checks |
 
-| Layer | Method | Speed | When Used |
-|-------|--------|-------|-----------|
-| 0 | Jailbreak regex guard | <1ms | Always (first check) |
-| 1 | Text normalization | <1ms | Always |
-| 2 | Digital arrest detection | <5ms | Always |
-| 3 | Rule-based keyword scoring | <5ms | Always |
-| 4 | ML classifier (TF-IDF + SVM) | <50ms | If rules are inconclusive |
-| 5 | LLM fallback (Cerebras/Groq) | 1-3s | If ML is inconclusive |
+## Decisions and practical limits
 
-The pipeline short-circuits at each layer. If rules return a high-confidence result, ML and LLM are never called.
+The cascade avoids a provider call for obvious rules and confident SVM decisions. It is inspectable and cheap locally, but hand-built rules are brittle and SVM margins are not probabilities. Brand mentions never authenticate a sender. A labelled, independently reviewed evaluation set is needed before optimizing thresholds.
 
-### 2. Persona Agent (`agents/persona.py`)
+LangGraph makes state and branching visible, at the cost of framework dependencies for a small graph. SQLite makes local replay straightforward. Its synchronous operations can block the event loop; process-local locks do not coordinate multiple workers. A timeout does not guarantee a thread's SQLite operation has stopped. No throughput measurement supports a scalability claim.
 
-Generates conversational responses using LLMs (Cerebras primary, Groq fallback). The persona adapts its strategy based on what intelligence has already been extracted:
+Regex extraction is reproducible and avoids model-generated entities, but patterns still misidentify text. Extraction is limited to messages with the expected incoming sender label. It does not verify ownership or validity of an extracted identifier. The output filter can also remove legitimate repeated data and miss unsupported formats.
 
-- **Low intelligence (0 items):** Play confused, act technologically illiterate, force scammer to repeat details.
-- **Medium intelligence (1 item):** Targeted probing to extract the next category of information.
-- **High intelligence (2+ items):** Verify accuracy of extracted data, then allow conversation to close.
+The historical GUVI endpoint is a hackathon result receiver. It is not a verified police/reporting service. Digital-arrest alert functions only append local log records. Logs and database state have no retention or access-control policy; keep demonstrations synthetic.
 
-Four distinct personas are available (Meena, Rohan, Ramesh, Mrs. Sharma), assigned deterministically per session.
-
-### 3. Extraction Agent (`agents/extraction.py`)
-
-Regex-based intelligence extraction. Runs on both original text and normalized text (to defeat obfuscation). Extracts:
-
-- Phone numbers (Indian formats)
-- UPI IDs (standard and obfuscated)
-- Bank account numbers
-- Phishing links
-- Suspicious keywords
-
-No LLM is used for extraction — this eliminates hallucination risk.
-
-### 4. Hallucination Filter (`agents/hallucination_filter.py`)
-
-Scans LLM persona output before it enters the conversation. Catches and replaces any sensitive data the LLM may have invented (OTPs, phone numbers, bank accounts, URLs).
-
-### 5. Digital Arrest Module (`agents/digital_arrest.py`)
-
-Specialized detector for authority-impersonation scams (India's most prevalent scam type). Detects patterns like:
-
-- Authority keyword mentions (CBI, police, TRAI, court)
-- Scam trigger phrases (parcel seized, arrest warrant, money laundering)
-- Pressure tactics (stay on call, security deposit, video call hearing)
-
-### 6. Timeline Agent (`agents/timeline.py`)
-
-Analyzes the completed conversation to identify scam phases (urgency, authority, fear, credential request, payment redirection). Generates a summary that is included in the final callback.
-
----
-
-## Workflow Graph (LangGraph)
-
-```
-START
-  |
-  v
-load_session ──────────────────────────────────────+
-  |                                                 |
-  v                                                 |
-[scam already confirmed?]                          |
-  |              |                                  |
-  YES            NO                                |
-  |              |                                  |
-  v              v                                  |
-persona      detection                             |
-  |              |                                  |
-  |         [is scam?]                             |
-  |          |       |                              |
-  |         YES    [trusted?]                      |
-  |          |      |       |                       |
-  |          v     YES      NO (turn <= 3)         |
-  |       persona  |        |                       |
-  |          |   not_scam  persona (paranoid probe) |
-  |          |     |        |                       |
-  v          v     v        v                       |
-extraction   extraction  not_scam                  |
-  |          |     |        |                       |
-  v          v     v        v                       |
-save_session ──────────────────────────────────────+
-  |
-  v
-END
-```
-
-**Key routing decisions:**
-
-- If scam was already detected in a prior turn, skip detection and go straight to persona.
-- If detection says "safe" but it's turn 1-3, engage anyway ("paranoid probe") to catch slow-boil scams.
-- If detection returns a trusted sender pattern (real OTP, real bank alert), exit immediately.
-
----
-
-## Concurrency Model
-
-| Mechanism | Purpose |
-|-----------|---------|
-| `asyncio.Semaphore(30)` | Limits to 30 concurrent requests; remaining queue |
-| Per-session `asyncio.Lock` | Prevents race conditions when same sessionId is sent twice |
-| SQLite WAL mode | Allows concurrent reads with single writer |
-| Thread-local DB connections | Prevents connection sharing across threads |
-| 35-second hard timeout | Prevents hung requests from blocking slots |
-
----
-
-## Dynamic Termination
-
-Conversations are not terminated at a fixed turn count. Instead, termination is based on intelligence quality:
-
-| Condition | Action |
-|-----------|--------|
-| 3+ intelligence categories filled | End immediately |
-| 2 categories + 6+ messages | End |
-| 1 category + 12+ messages | End |
-| 0 categories + 12+ messages | End (give up) |
-| 20 messages | Hard maximum, end regardless |
-| Non-scam detected | End immediately |
-
----
-
-## External Dependencies
-
-| Dependency | Role |
-|------------|------|
-| Cerebras API | Primary LLM provider (llama3.1-8b) |
-| Groq API | Fallback LLM provider (llama-3.1-8b-instant) |
-| GUVI Hackathon endpoint | Receives final callback with extracted intelligence |
-
----
-
-## Deployment
-
-The application is deployed on Railway. The entry point is `src.main:app` (uvicorn). Environment variables are managed via `.env` locally and platform secrets in production.
+Provider fallback currently means client selection at initialization. Runtime inference failures do not switch from Cerebras to Groq. Persona failures can yield scripted text, whereas failed ambiguous detection yields an API error. Explicit provider/fallback metadata, bounded retry policies, callback delivery records, and a broader model evaluation are future work.

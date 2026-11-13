@@ -25,7 +25,9 @@ def get_llm():
         except Exception as e:
             logger.warning(f"[llm] Cerebras init failed: {e}")
 
-    logger.info(f"[llm] using Groq fallback ({FALLBACK_MODEL}) | groq_key_set={bool(GROQ_API_KEY and GROQ_API_KEY != 'temp-key')}")
+    if not GROQ_API_KEY or GROQ_API_KEY == "temp-key":
+        raise RuntimeError("Set CEREBRAS_API_KEY or GROQ_API_KEY for live LLM calls")
+    logger.info(f"[llm] using Groq fallback ({FALLBACK_MODEL})")
     return ChatGroq(model=FALLBACK_MODEL, api_key=GROQ_API_KEY, temperature=0.8, max_tokens=150)
 
 
