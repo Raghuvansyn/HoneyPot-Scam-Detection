@@ -1,309 +1,134 @@
 # ScamBait AI
 
-**An AI-powered honeypot system that detects scams, engages scammers in realistic conversation, and extracts actionable intelligence for law enforcement.**
+ScamBait AI is a collaborative hackathon prototype for inspecting suspicious messages through a Python API. It detects scam patterns, generates a conversational reply, and extracts candidate contact and payment identifiers for later review. It is intended for controlled demonstrations with synthetic messages.
 
-Built for the **GUVI Hackathon 2026**.
+## Current implementation
 
-| | |
-|---|---|
-| **Deployed URL** | `https://scambait-ai-production.up.railway.app/api/v1/honeypot` |
-| **API Key** | `GUVI-Hackathon-2026-ScamBait-xK9mP2vL7qR3wT8` |
-| *GitHub* | [github.com/Raghuvansyn/HoneyPot-Scam-Detection](https://github.com/Raghuvansyn/HoneyPot-Scam-Detection) |
----
+- FastAPI endpoints at `/honeypot` and `/api/v1/honeypot` with a shared response schema.
+- A LangGraph workflow for loading sessions, detection, replies, extraction, and persistence.
+- Rules, a small TF-IDF/LinearSVC classifier, and an LLM fallback for ambiguous messages.
+- Cerebras or Groq persona generation, with a scripted reply when generation fails.
+- Regex extraction from incoming `scammer` messages only. Generated persona replies are excluded from evidence.
+- SQLite persistence, per-session request serialization, and a process-local concurrency limit of 30.
+- Development callback dry runs; production mode can send a final result to the configured-in-code GUVI hackathon endpoint. Digital-arrest alerts write a local log; there is no verified law-enforcement integration.
 
-## Description
+The project was built for the GUVI Hackathon 2026 according to its repository history. No award, adoption, production readiness, or field accuracy is claimed here.
 
-Traditional scam detection systems simply block suspicious messages. ScamBait AI takes a fundamentally different approach: it **engages** the scammer using a convincing AI persona, prolonging the conversation to extract phone numbers, UPI IDs, bank accounts, and phishing links. This intelligence is then automatically relayed to law enforcement endpoints.
+## Contribution and attribution
 
-**Core strategy:**
+This is team work. Commit history includes Diya Virmani ([diyaavirmani](https://github.com/diyaavirmani)), Maaz ([somewherelostt](https://github.com/somewherelostt)), and Ankit Singh Raghuvanshi. Commits bearing Ankit's name cover extraction, workflow tuning, and engagement thresholds; [633719b](https://github.com/Raghuvansyn/HoneyPot-Scam-Detection/commit/633719bb055c5858c6f34a544d2607cbb711ed55) and [70e699d](https://github.com/Raghuvansyn/HoneyPot-Scam-Detection/commit/70e699d9acbedae15e042381baaca4bb51788564) are examples. The Raghuvansyn account maintains this portfolio copy and its documentation. This history does not establish sole authorship.
 
-```
-Scam Detected  -->  Engage Scammer  -->  Extract Intelligence  -->  Report to LEA
-```
-
-The system uses a multi-agent architecture orchestrated via LangGraph, with a cascading detection pipeline (Rules -> ML -> LLM fallback) and context-aware persona generation that adapts its conversation strategy based on what intelligence has already been extracted.
-
----
-
-## Tech Stack
-
-| Component | Technology | Purpose |
-|---|---|---|
-| **Framework** | FastAPI (async) | High-performance API with concurrency controls |
-| **Orchestration** | LangGraph | Multi-agent workflow with conditional routing |
-| **LLM Integration** | LangChain + Cerebras / Groq | Persona generation and fallback scam detection |
-| **ML Model** | scikit-learn (TF-IDF + LinearSVC) | Fast pattern-based scam classification |
-| **Database** | SQLite (WAL mode) | Session persistence with concurrent access |
-| **Language** | Python 3.11+ | Full ML/NLP ecosystem support |
-
-**LLM Models used:**
-- Primary: Cerebras `llama3.1-8b`
-- Fallback: Groq `llama-3.1-8b-instant`
-
----
-
-## Setup Instructions
-
-### Prerequisites
-
-- Python 3.11+
-- A Groq API key ([free tier available](https://console.groq.com))
-- A Cerebras API key (optional, Groq is used as fallback)
-
-### Installation
-
-```bash
-# 1. Clone the repository
-git clone https://github.com/diyaavirmani/HoneyPot-Scam-Detection.git
-cd HoneyPot-Scam-Detection
-
-# 2. Install dependencies
-pip install -r requirements.txt
-
-# 3. Configure environment variables
-cp .env.example .env
-# Edit .env and add your API keys
-
-# 4. Start the server
-python run.py
-```
-
-The server starts at `http://localhost:8002`. Interactive API docs are available at `http://localhost:8002/docs`.
-
----
-
-## API Endpoint
-
-| Field | Value |
-|---|---|
-| **Deployed URL** | `https://scambait-ai-production.up.railway.app/api/v1/honeypot` |
-| **Alternate URL** | `https://scambait-ai-production.up.railway.app/honeypot` |
-| **Method** | `POST` |
-| **Authentication** | `x-api-key` header |
-| **Content-Type** | `application/json` |
-
-### Request Format
-
-```json
-{
-  "sessionId": "test-session-001",
-  "message": {
-    "sender": "scammer",
-    "text": "URGENT! Your bank account has been blocked. Send OTP to 9876543210.",
-    "timestamp": "2026-02-16T10:00:00Z"
-  },
-  "metadata": {
-    "channel": "SMS",
-    "language": "English",
-    "locale": "IN"
-  }
-}
-```
-
-### Response Format
-
-```json
-{
-  "status": "success",
-  "reply": "Oh no! What happened? Let me get my pen...",
-  "meta": {
-    "agentState": "engaging",
-    "sessionStatus": "active",
-    "persona": "confused_customer",
-    "turn": 2,
-    "agentNotes": "Detection: SCAM (confidence: 0.95)"
-  }
-}
-```
-
-### cURL Example
-
-```bash
-curl -X POST "https://scambait-ai-production.up.railway.app/api/v1/honeypot" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "sessionId": "demo-001",
-    "message": {
-      "sender": "scammer",
-      "text": "Your KYC is pending. Update now or account will be frozen.",
-      "timestamp": "2026-02-16T10:00:00Z"
-    }
-  }'
-```
-
----
-
-## Approach
-
-### How We Detect Scams
-
-The detection engine uses a **cascading pipeline** — fast checks run first, expensive checks only when needed:
-
-1. **Jailbreak Guard** — Instant block for prompt injection attempts
-2. **Text Normalization** — Defeats obfuscation like `U R G E N T` or word-to-digit tricks
-3. **Digital Arrest Module** — Specialized detector for India's most prevalent scam type (authority impersonation, arrest threats)
-4. **Rule-Based Scoring** — Keyword matching with whitelist for legitimate senders (OTPs, Amazon, banks)
-5. **ML Classifier** — TF-IDF + LinearSVC trained on 100 labeled samples (50 scam, 50 legitimate)
-6. **LLM Fallback** — "Vibe check" for ambiguous messages (pig butchering, multi-language scams) using Cerebras/Groq
-
-### How We Extract Intelligence
-
-All extraction is **regex-based** (no LLM hallucination risk):
-
-- **Phone numbers** — Indian formats: `+91-XXXXXXXXXX`, 10-digit, spaced digits
-- **UPI IDs** — Standard (`user@paytm`) and obfuscated (`user at paytm dot com`)
-- **Bank accounts** — 9-18 digit account numbers
-- **Phishing links** — URLs including shortened links (`bit.ly`, `tinyurl`)
-- **Suspicious keywords** — urgency markers, financial terms, threat language
-
-### How We Maintain Engagement
-
-The persona agent uses a **context-aware strategy** that adapts based on extracted intelligence:
-
-| Intelligence State | Strategy | Goal |
-|---|---|---|
-| **0 items extracted** | Play dumb, act confused | Force scammer to repeat details |
-| **1 item extracted** | Targeted probing | Extract the next category |
-| **2+ items extracted** | Verify and confirm | Validate accuracy, then close |
-
-Four distinct personas (Meena, Rohan, Ramesh, Mrs. Sharma) are assigned per session, each with unique personality traits and engagement styles. All responses pass through an **anti-hallucination filter** that catches any sensitive data the LLM might invent.
-
----
+The reliability batch adds API failure handling, evidence provenance checks, database isolation, regression tests, and a reproducible offline demonstration. Existing collaborator work, provider acknowledgments, and the [MIT license](LICENSE) are preserved.
 
 ## Architecture
 
-```
-                          +-------------------+
-                          |   FastAPI Server   |
-                          | (Concurrency Mgr)  |
-                          +---------+---------+
-                                    |
-                          +---------v---------+
-                          |   LangGraph        |
-                          |   Workflow Engine   |
-                          +---------+---------+
-                                    |
-              +---------------------+---------------------+
-              |                     |                     |
-    +---------v-------+   +---------v-------+   +---------v-------+
-    | Detection Agent |   |  Persona Agent  |   | Extraction Agent|
-    | (Rules+ML+LLM)  |   | (LLM + Context) |   |  (Regex-based)  |
-    +-----------------+   +-----------------+   +-----------------+
-              |                     |                     |
-              +---------------------+---------------------+
-                                    |
-                          +---------v---------+
-                          |  Session Manager   |
-                          |  (SQLite + WAL)    |
-                          +-------------------+
-                                    |
-                          +---------v---------+
-                          |  GUVI Callback     |
-                          |  (Final Report)    |
-                          +-------------------+
+```mermaid
+flowchart LR
+    A[Validated API request] --> B[Load SQLite session]
+    B --> C{Scam already detected?}
+    C -->|No| D[Rules / TF-IDF SVM / LLM detection]
+    C -->|Yes| E[Persona reply]
+    D --> E
+    D --> F[Polite reply for safe messages]
+    E --> G[Extract incoming-message evidence]
+    G --> H[Termination check and save]
+    F --> H
+    H --> I[Structured API response]
 ```
 
-**Workflow graph:** `START` -> `load_session` -> `detection` -> `persona` -> `extraction` -> `save_session` -> `END`
+[Architecture and tradeoffs](docs/architecture.md) describe the actual routing and stopping conditions. Conversation history supplied by clients is currently ignored; the server appends each new message to its own persisted history for that `sessionId`. Use a fresh ID for an independent conversation.
 
-Conditional routing after detection decides whether to engage (scam detected) or politely exit (legitimate message). A "paranoid engagement" mode keeps conversations going for at least 3 turns even for initially-safe messages, catching slow-boil scams that start with casual greetings.
+## Install and run
 
----
-
-## Project Structure
-
-```
-HoneyPot-Scam-Detection/
-|
-+-- README.md                         # Setup and usage instructions
-+-- requirements.txt                  # Python dependencies
-+-- .env.example                      # Environment variables template
-+-- run.py                            # Local server startup script
-+-- render.yaml                       # Render.com deployment config
-+-- LICENSE                           # MIT License
-|
-+-- src/                              # Source code
-|   +-- main.py                       # Main API implementation (FastAPI)
-|   +-- config.py                     # Environment variable management
-|   +-- models.py                     # Pydantic request/response schemas
-|   +-- database.py                   # SQLite session manager (WAL mode)
-|   |
-|   +-- agents/                       # Honeypot agent modules
-|   |   +-- detection.py              # Cascading scam detection (Rules -> ML -> LLM)
-|   |   +-- persona.py                # Context-aware persona generation
-|   |   +-- extraction.py             # Intelligence extraction (regex-based)
-|   |   +-- hallucination_filter.py   # Anti-hallucination safety layer
-|   |   +-- timeline.py               # Conversation summarization
-|   |   +-- digital_arrest.py         # Digital arrest scam specialization
-|   |
-|   +-- workflow/                     # LangGraph orchestration
-|   |   +-- graph.py                  # Workflow graph definition & execution
-|   |
-|   +-- utils/                        # Utilities
-|       +-- logger.py                 # Structured logging (console + file)
-|       +-- callbacks.py              # GUVI callback & dynamic termination
-|
-+-- tests/                            # Test suite
-|   +-- test_detection.py             # Detection accuracy tests
-|   +-- test_strict_language.py       # Language consistency tests
-|   +-- stress_limit_finder.py        # Concurrency stress testing
-|   +-- test_scam.json                # Scam message samples
-|   +-- test_legit.json               # Legitimate message samples
-|
-+-- evaluation/                       # Evaluation toolkit
-|   +-- README.md                     # Evaluation documentation
-|   +-- dataset/reddit_scams.json     # Reddit-sourced scam dataset
-|   +-- scripts/run_evaluation.py     # Batch evaluation runner
-|   +-- scripts/expand_prompts.py     # Prompt variation generator
-|
-+-- docs/                             # Additional documentation
-    +-- architecture.md               # System architecture & design
-```
-
----
-
-## Testing
-
-### Run Detection Accuracy Tests
+Python 3.11 is the version family specified by `.python-version`. Clean setup, dependency checks, and offline workflows were verified locally on Python 3.11.15 and 3.13.0. Use an isolated environment:
 
 ```bash
-python tests/test_detection.py
+git clone https://github.com/Raghuvansyn/HoneyPot-Scam-Detection.git
+cd HoneyPot-Scam-Detection
+python3 -m venv .venv
+source .venv/bin/activate
+# PowerShell: .venv\Scripts\Activate.ps1
+python -m pip install -r requirements-dev.txt
+python -m pip check
 ```
 
-### Run Language Consistency Tests
+`requirements.txt` contains runtime dependencies; `requirements-dev.txt` also installs the offline verification tools. No downloaded dataset or pretrained model file is needed: the small SVM trains lazily on 115 strings embedded in `src/agents/detection.py`.
+
+For live generation:
 
 ```bash
-python tests/test_strict_language.py
+cp .env.example .env
+# Edit .env: choose a private API_KEY and set a valid provider key.
+# Keep MODE=dev for demonstrations; it disables outbound GUVI callbacks.
+python run.py
 ```
 
-### Interactive API Testing
+Open `http://127.0.0.1:8002/docs`. The launcher binds to `0.0.0.0`; configure `API_KEY` before exposing it outside your machine. Send it in the `x-api-key` header. With no configured key, development mode permits local requests. Production requests fail with HTTP 503 if the API key is missing or set to the old placeholder.
 
-Start the server and open the Swagger UI:
+| Setting | Purpose |
+|---|---|
+| `API_KEY` | Shared access key for the API; never commit a live value |
+| `CEREBRAS_API_KEY` | Preferred provider when present; model ID is `llama3.1-8b` |
+| `GROQ_API_KEY` | Used if Cerebras is not configured or fails during client initialization; model ID is `llama-3.1-8b-instant` |
+| `MODE` | Defaults to `dev`; only `prod` enables GUVI transmission |
+| `DATABASE_PATH` | Writable SQLite path; defaults to `honeypot.db` |
 
+Provider/model availability is unverified. A Cerebras inference failure does not automatically retry Groq. Ambiguous detection without a working provider returns HTTP 503 rather than a fabricated safe verdict. Persona generation alone can fall back to scripted text. API workflow timeouts return 504; invalid input returns 422 and incorrect keys return 401. Callbacks and request logs may contain message content; use synthetic data for demos.
+
+## Representative example
+
+With the local server running and your API key exported:
+
+```bash
+curl http://127.0.0.1:8002/api/v1/honeypot \
+  -H 'Content-Type: application/json' \
+  -H "x-api-key: $API_KEY" \
+  -d '{"sessionId":"demo-001","message":{"sender":"scammer","text":"URGENT! Send money to demo@paytm immediately.","timestamp":"2026-01-01T00:00:00Z"}}'
 ```
-http://localhost:8002/docs
+
+`demo@paytm` is a synthetic text fixture: never send a payment. A live reply depends on the configured provider. For a demonstration requiring no credentials or network:
+
+```bash
+python -m examples.offline_demo
 ```
 
----
+This uses the real API, graph, rule detection, extraction, and SQLite store. **Only the persona provider is mocked**, and the callback is a development dry run. Nine incoming fixture messages and nine generated replies reach the 18-message threshold for a session with one extracted evidence category. The client stops at the first closed response. Actual verified output includes:
 
-## Key Features
+```json
+{
+  "mode": "offline provider fixture; callback dry run",
+  "requests": 9,
+  "scamDetected": true,
+  "upiIds": ["demo@paytm"],
+  "sessionStatus": "closed",
+  "totalMessagesExchanged": 18
+}
+```
 
-- **Hybrid Detection** — Rules + ML + LLM fallback in a cascading pipeline
-- **Context-Aware Persona** — LLM-generated responses that adapt based on extracted intelligence
-- **Real-Time Extraction** — Regex-based extraction of phone numbers, UPI IDs, bank accounts, and phishing links
-- **Digital Arrest Prevention** — Specialized module for authority-impersonation scams
-- **Anti-Hallucination Filter** — Catches fabricated sensitive data before it enters the conversation
-- **Dynamic Termination** — Ends conversations based on intelligence quality, not arbitrary turn limits
-- **Concurrency Safe** — Semaphore + session locks handle 50+ simultaneous sessions
-- **Graceful Degradation** — Always returns a valid response, never a 500 error
+This is a selected summary of the script's nested output, not a live model result. It verifies application wiring and persistence, not the realism or quality of generated conversation.
 
----
+## Tests, evaluation, and evidence
 
-## Team
+```bash
+python -m pytest -q
+python -m examples.offline_demo
+python -m evaluation.scripts.offline_detection
+python -m pip check
+```
 
-### Ankit Singh Raghuvanshi
----
+All 17 offline tests passed on both verified Python versions. The default pytest suite is `tests/offline`. It verifies API errors and auth, bounded input, same-session serialization, database isolation/persistence failure, extraction provenance, malformed/valid model response parsing, normalization, spoofed brand/warning text, and a complete graph workflow. The other scripts in `tests/` are historical manual/live probes; they are not collected by default.
 
-## License
+The 16-case synthetic detection probe has 8 positive and 8 negative labels, no exact embedded-training-string duplicates, and no live LLM. The local run produced 8 true positives, 3 true negatives, 1 false positive, and 4 abstentions requiring an LLM. The neutral bank-discussion case is a known false positive. These deliberately small regression cases do not establish general accuracy. Heuristic confidence values and SVM margins are not calibrated probabilities.
 
-This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
+See [evaluation method and limitations](evaluation/README.md). There is no supported throughput, cost, production availability, or comparative accuracy result. The committed CI workflow runs offline checks on Python 3.11 and 3.13; its presence alone does not establish that remote CI passed.
+
+## Limitations and next work
+
+- The classifier uses a tiny, manually embedded corpus with no held-out model-selection/test procedure. Near-duplicate training/evaluation templates and class balance have not been audited statistically.
+- Keywords, trusted-message templates, and regex extraction can create false positives and false negatives. Extracted links are candidates, not verified phishing sites or confirmed criminal identities.
+- Output filtering catches a limited set of sensitive patterns. It does not prove freedom from hallucination or prompt injection.
+- SQLite calls are synchronous; locks and the semaphore protect one Python process only. Database errors now surface instead of silently discarding state. There is no multi-worker coordination, request idempotency, retention policy, or durable callback retry queue.
+- Development callback success means a skipped transmission. Production callback failures close the session and are not durably retried.
+- The historical Railway URL has not been verified; no hosted demo is advertised as available. `render.yaml` describes a potential deployment and needs environment configuration and a persistence plan.
+
+Next work: rotate previously published credentials, independently label a broader detection set, compare calibrated baselines, add provider integration checks, distinguish generated and fallback replies in response metadata, and design durable session/callback handling before deployment.

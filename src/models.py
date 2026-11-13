@@ -5,8 +5,8 @@ from typing import List, Optional, Dict, Literal, Union, TypedDict, Any
 # --- Input Models ---
 
 class Message(BaseModel):
-    sender: str
-    text: str = Field(..., max_length=10000)
+    sender: Literal["scammer", "user"]
+    text: str = Field(..., min_length=1, max_length=10000)
     timestamp: Union[str, int]
 
 
@@ -17,9 +17,9 @@ class Metadata(BaseModel):
 
 
 class HoneypotRequest(BaseModel):
-    sessionId: str
+    sessionId: str = Field(..., min_length=1, max_length=128, pattern=r"^[A-Za-z0-9_.-]+$")
     message: Message
-    conversationHistory: List[Message] = []
+    conversationHistory: List[Message] = Field(default_factory=list, max_length=100)
     metadata: Optional[Metadata] = None
 
 

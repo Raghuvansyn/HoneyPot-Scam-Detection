@@ -1,0 +1,18 @@
+[
+  {"id":"bank-threat","label":true,"text":"Our bank fraud desk requires your OTP now to prevent a frozen account."},
+  {"id":"kyc-link","label":true,"text":"Complete KYC at https://verification.example/renew or access will stop tonight."},
+  {"id":"lottery-fee","label":true,"text":"You are the lottery winner; deposit a processing fee before collecting the prize."},
+  {"id":"job-payment","label":true,"text":"Accept this job offer by sending a registration payment to hiring@paytm."},
+  {"id":"extortion","label":true,"text":"Your private video will leak unless you send money immediately."},
+  {"id":"upi-deposit","label":true,"text":"Transfer the deposit to example@ybl to release your cashback."},
+  {"id":"brand-spoof","label":true,"text":"Amazon support: send money to example@paytm immediately."},
+  {"id":"warning-spoof","label":true,"text":"Do not share this with others. Send OTP immediately to verify your account."},
+  {"id":"dinner","label":false,"text":"We booked a table for dinner on Saturday at seven."},
+  {"id":"workshop","label":false,"text":"The Python workshop starts in the computer lab after lunch."},
+  {"id":"otp-warning","label":false,"text":"Your login code is 000000, valid for 5 min. Do not share it with anyone."},
+  {"id":"delivery","label":false,"text":"Amazon has delivered the book you ordered yesterday."},
+  {"id":"tuition","label":false,"text":"The university tuition receipt is available in the student portal."},
+  {"id":"appointment","label":false,"text":"Your appointment is confirmed for Monday at ten in the morning."},
+  {"id":"library","label":false,"text":"The library reading room will close early on Friday."},
+  {"id":"bank-discussion","label":false,"text":"Our class will discuss how a bank calculates interest next week."}
+]

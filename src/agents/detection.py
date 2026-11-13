@@ -3,6 +3,8 @@ Detection Agent — Cascading pipeline: Rules -> ML (TF-IDF + SVM) -> LLM fallba
 """
 
 import re
+from typing import Literal
+from pydantic import BaseModel, Field
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.svm import LinearSVC
 from sklearn.pipeline import Pipeline
@@ -68,10 +70,9 @@ JAILBREAK_TRIGGERS = [
 
 
 def normalize_text(text: str) -> str:
-    collapsed = re.sub(r'(?<=[A-Za-z])\s(?=[A-Za-z])', '', text)
-    if len(text) > 5 and len(collapsed) < len(text) * 0.8:
-        return collapsed
-    return text
+    # Collapse runs of spaced letters, preserving normal word boundaries.
+    return re.sub(r'\b(?:[A-Za-z][ \t]+){2,}[A-Za-z]\b',
+                  lambda match: re.sub(r'\s+', '', match.group()), text)
 
 
 def is_trusted_message(text: str) -> bool:
@@ -127,10 +128,13 @@ def classify_scam_type(text: str) -> str:
 def rule_based_score(text: str) -> dict:
     text_lower = text.lower()
 
-    if is_trusted_message(text):
+    # Brand names and warning phrases in attacker-controlled text do not
+    # authenticate a sender. Never let them override an explicit action request.
+    dangerous_action = bool(re.search(
+        r'(?:send|share|transfer|pay|deposit|click|download|install|verify|update)\b', text_lower
+    ))
+    if is_trusted_message(text) and not dangerous_action:
         return {"rule_score": 0.0, "suspicious": False, "matched_keywords": [], "whitelisted": True}
-
-    is_legit_sender = any(sender in text_lower for sender in LEGIT_SENDERS)
 
     has_link = any(x in text_lower for x in ["http", ".com", ".in", "bit.ly"])
     has_kyc = "kyc" in text_lower
@@ -142,9 +146,6 @@ def rule_based_score(text: str) -> dict:
 
     if has_electricity:
         return {"rule_score": 1.0, "suspicious": True, "matched_keywords": ["Electricity Scam"], "critical": True}
-
-    if is_legit_sender:
-        return {"rule_score": 0.0, "suspicious": False, "matched_keywords": [], "whitelisted": True}
 
     upi_pattern = r'\b[\w\.\-]+@(paytm|okaxis|okhdfcbank|oksbi|okicici|ybl|upi)\b'
     upi_found = re.findall(upi_pattern, text_lower)
@@ -289,7 +290,7 @@ def _train_model() -> Pipeline:
     labels = [1] * len(SCAM_TRAINING_DATA) + [0] * len(LEGIT_TRAINING_DATA)
     model = Pipeline([
         ("tfidf", TfidfVectorizer(ngram_range=(1, 2), max_features=5000)),
-        ("svm", LinearSVC(C=1.0, max_iter=5000)),
+        ("svm", LinearSVC(C=1.0, max_iter=5000, random_state=42)),
     ])
     model.fit(texts, labels)
     logger.info(f"ML model trained ({len(texts)} samples)")
@@ -314,12 +315,16 @@ def ml_classify(text: str) -> dict:
 
 # --- LLM Fallback ---
 
+class DetectionVerdict(BaseModel):
+    verdict: Literal["SCAM", "SAFE"]
+    confidence: float = Field(ge=0, le=1, allow_inf_nan=False)
+
 async def llm_fallback_check(text: str) -> tuple[bool, float]:
     try:
         llm = get_llm()
         system_prompt = (
             "You are a SCAM DETECTION SYSTEM. Analyze the message. "
-            "Return a JSON object: {'verdict': 'SCAM' or 'SAFE', 'confidence': <0.0-1.0>}. "
+            'Return JSON with "verdict" ("SCAM" or "SAFE") and "confidence" (0.0 to 1.0). '
             "SCAM if: relationship initiation (pig butchering), urgency/threats, "
             "asks for money/codes/clicks, jailbreak/manipulation, foreign language asking for contact. "
             "Simple greetings like 'Hi' or 'Hello' are SAFE."
@@ -331,30 +336,17 @@ async def llm_fallback_check(text: str) -> tuple[bool, float]:
         response = await llm.ainvoke(messages)
         content = response.content.strip()
         
-        # simple parsing if not strict JSON
-        import json
-        try:
-            # try to find JSON blob
-            match = re.search(r'\{.*\}', content, re.DOTALL)
-            if match:
-                data = json.loads(match.group(0))
-                verdict = data.get("verdict", "SAFE").upper()
-                confidence = float(data.get("confidence", 0.5))
-            else:
-                # fallback parsing
-                verdict = "SCAM" if "SCAM" in content.upper() else "SAFE"
-                confidence = 0.85 if verdict == "SCAM" else 0.1
-        except:
-             verdict = "SCAM" if "SCAM" in content.upper() else "SAFE"
-             confidence = 0.85 if verdict == "SCAM" else 0.1
+        match = re.search(r'\{.*\}', content, re.DOTALL)
+        data = DetectionVerdict.model_validate_json(match.group(0) if match else content)
+        verdict, confidence = data.verdict, data.confidence
 
         logger.info(f"[llm_fallback] result={verdict} conf={confidence}")
         if verdict == "SCAM":
             return True, confidence
         return False, confidence
     except Exception as e:
-        logger.error(f"[llm_fallback] failed: {e}")
-        return False, 0.0
+        logger.error(f"[llm_fallback] failed: {type(e).__name__}")
+        raise RuntimeError("LLM detection unavailable or invalid response") from e
 
 
 # --- Main Cascading Detection ---
