@@ -16,7 +16,7 @@ The project was built for the GUVI Hackathon 2026 according to its repository hi
 
 ## Contribution and attribution
 
-This is team work. Commit history includes Diya Virmani ([diyaavirmani](https://github.com/diyaavirmani)), Maaz ([somewherelostt](https://github.com/somewherelostt)), and Ankit Singh Raghuvanshi. Commits bearing Ankit's name under [neeraj-raghuvanshi](https://github.com/neeraj-raghuvanshi) cover extraction, workflow tuning, and engagement thresholds; [633719b](https://github.com/Raghuvansyn/HoneyPot-Scam-Detection/commit/633719bb055c5858c6f34a544d2607cbb711ed55) and [70e699d](https://github.com/Raghuvansyn/HoneyPot-Scam-Detection/commit/70e699d9acbedae15e042381baaca4bb51788564) are examples. The Raghuvansyn account maintains this portfolio copy and its documentation. This history does not establish sole authorship or independently confirm the relationship between the two accounts.
+This is team work. Commit history includes Diya Virmani ([diyaavirmani](https://github.com/diyaavirmani)), Maaz ([somewherelostt](https://github.com/somewherelostt)), and Ankit Singh Raghuvanshi. Commits bearing Ankit's name cover extraction, workflow tuning, and engagement thresholds; [633719b](https://github.com/Raghuvansyn/HoneyPot-Scam-Detection/commit/633719bb055c5858c6f34a544d2607cbb711ed55) and [70e699d](https://github.com/Raghuvansyn/HoneyPot-Scam-Detection/commit/70e699d9acbedae15e042381baaca4bb51788564) are examples. The Raghuvansyn account maintains this portfolio copy and its documentation. This history does not establish sole authorship.
 
 The reliability batch adds API failure handling, evidence provenance checks, database isolation, regression tests, and a reproducible offline demonstration. Existing collaborator work, provider acknowledgments, and the [MIT license](LICENSE) are preserved.
 
@@ -92,16 +92,16 @@ curl http://127.0.0.1:8002/api/v1/honeypot \
 python -m examples.offline_demo
 ```
 
-This uses the real API, graph, rule detection, extraction, and SQLite store. **Only the persona provider is mocked**, and the callback is a development dry run. Ten incoming fixture messages reach the 20-message stopping limit, including ten generated replies. Actual verified output includes:
+This uses the real API, graph, rule detection, extraction, and SQLite store. **Only the persona provider is mocked**, and the callback is a development dry run. Nine incoming fixture messages and nine generated replies reach the 18-message threshold for a session with one extracted evidence category. The client stops at the first closed response. Actual verified output includes:
 
 ```json
 {
   "mode": "offline provider fixture; callback dry run",
-  "requests": 10,
+  "requests": 9,
   "scamDetected": true,
   "upiIds": ["demo@paytm"],
   "sessionStatus": "closed",
-  "totalMessagesExchanged": 20
+  "totalMessagesExchanged": 18
 }
 ```
 

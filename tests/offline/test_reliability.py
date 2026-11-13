@@ -49,19 +49,25 @@ def test_complete_graph_persists_and_closes(monkeypatch, isolated):
     reply = AsyncMock(return_value="MOCK FIXTURE: Please repeat the payment instructions.")
     monkeypatch.setattr(graph, "generate_persona_response", reply)
     async def run():
-        results = [await post(payload()) for _ in range(10)]
+        results = []
+        for _ in range(10):
+            response = await post(payload())
+            results.append(response)
+            if response.json()["meta"]["sessionStatus"] == "closed":
+                break
+        assert len(results) == 9
         assert all(r.status_code == 200 for r in results)
         body = results[-1].json()
         assert body["scamDetected"] is True
         assert body["extractedIntelligence"]["upiIds"] == ["demo@paytm"]
         assert body["meta"]["sessionStatus"] == "closed"
-        assert body["engagementMetrics"]["totalMessagesExchanged"] == 20
+        assert body["engagementMetrics"]["totalMessagesExchanged"] == 18
         state = isolated.get_session("offline-test")
         assert state["sessionStatus"] == "closed"
         assert state["callbackSent"] is True  # dev dry run, no transmission
-        assert len(state["conversationHistory"]) == 20
+        assert len(state["conversationHistory"]) == 18
     asyncio.run(run())
-    assert reply.await_count == 10
+    assert reply.await_count == 9
     assert main._session_locks == {}
 
 

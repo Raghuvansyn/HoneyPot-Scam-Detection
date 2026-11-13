@@ -10,7 +10,7 @@ python -m examples.offline_demo
 python -m evaluation.scripts.offline_detection
 ```
 
-The pytest suite asserts application behavior without network access. The demonstration runs ten synthetic incoming messages through the real API, graph, extraction and SQLite state, using a clearly labelled persona fixture. It closes at 20 combined messages; the GUVI callback is a dry run. Neither command measures live model quality or deployed performance.
+The pytest suite asserts application behavior without network access. The demonstration runs nine synthetic incoming messages through the real API, graph, extraction and SQLite state, using a clearly labelled persona fixture. It stops at the first closed response, at 18 combined messages with one evidence category; the GUVI callback is a dry run. Neither command measures live model quality or deployed performance.
 
 `dataset/offline_cases.json` contains 16 manually authored synthetic regression cases, 8 scam and 8 non-scam. The detection probe runs the real rule/TF-IDF/SVM cascade and abstains where a live LLM would be required. It checks there are no exact normalized-string duplicates of the 115 embedded training strings. This does not rule out template similarity or establish independence from development choices.
 

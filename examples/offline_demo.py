@@ -31,10 +31,12 @@ async def run():
                                     "timestamp": "2026-01-01T00:00:00Z"},
                     })
                     response.raise_for_status()
-                result = response.json()
+                    result = response.json()
+                    if result["meta"]["sessionStatus"] == "closed":
+                        break
         assert result["meta"]["sessionStatus"] == "closed"
         assert result["scamDetected"] is True
-        assert store.get_session("offline-demo")["totalMessages"] == 20
+        assert store.get_session("offline-demo")["totalMessages"] == 18
         print(json.dumps({"mode": "offline provider fixture; callback dry run", "requests": turn + 1,
                           "response": result}, indent=2))
 
